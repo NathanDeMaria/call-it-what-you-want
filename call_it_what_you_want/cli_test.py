@@ -5,6 +5,10 @@ import pytest
 from .cli import Records, main
 from .data import NewNameWarning, NewTeamWarning, record, teams_from_csv
 
+# An id ESPN will never issue, so a real pull landing in the bundled data
+# can't turn this test's "team nobody has seen" into one somebody has.
+UNSEEN = "test-1"
+
 
 @pytest.fixture
 def records() -> Records:
@@ -28,14 +32,14 @@ def test_show_writes_a_file_that_loads(
     records: Records, tmp_path: Path, capsys: pytest.CaptureFixture[str]
 ) -> None:
     with pytest.warns(NewTeamWarning):
-        record("2426", "Navy Midshipmen", 2025)
+        record(UNSEEN, "Nowhere State Armadillos", 2025)
     path = tmp_path / "ncaa.csv"
 
     records.show(output=str(path))
 
     assert capsys.readouterr().out == ""
     rebuilt = teams_from_csv(path.read_text().splitlines())
-    assert rebuilt.espn_id("Navy Midshipmen") == "2426"
+    assert rebuilt.espn_id("Nowhere State Armadillos") == UNSEEN
 
 
 def test_new_prints_only_the_local_rows(
@@ -74,7 +78,7 @@ def test_count_separates_bundled_from_local(
     records: Records, capsys: pytest.CaptureFixture[str]
 ) -> None:
     with pytest.warns(NewTeamWarning):
-        record("2426", "Navy Midshipmen", 2025)
+        record(UNSEEN, "Nowhere State Armadillos", 2025)
 
     records.count()
 

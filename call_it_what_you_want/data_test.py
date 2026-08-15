@@ -145,6 +145,13 @@ def test_unknown_namespace_lists_what_is_bundled() -> None:
         default_teams("underwater-basket-weaving")
 
 
+@pytest.mark.xfail(
+    reason="The bundled pull is football-only, so no team in it carries "
+    "names from two leagues yet. Flips back to passing once a basketball "
+    "pull lands; registry_test.py covers the property on a fixture "
+    "in the meantime.",
+    strict=True,
+)
 def test_college_sports_share_one_namespace() -> None:
     # Duke is 150 in football and both basketballs -- one row of teams,
     # names added to it per sport, not a new team per sport.
@@ -155,13 +162,17 @@ def test_college_sports_share_one_namespace() -> None:
 
 
 def test_module_level_helpers_use_the_bundled_data() -> None:
-    assert current_name("Army Black Knights") == "Army Knights"
-    assert espn_id("Army Black Knights") == "349"
-    assert name_in("Army Knights", 2015) == "Army Black Knights"
+    # ESPN went from "Appalachian State Mountaineers" to "App State
+    # Mountaineers" in 2024, which is on record either side of the change.
+    assert current_name("Appalachian State Mountaineers") == "App State Mountaineers"
+    assert espn_id("Appalachian State Mountaineers") == "2026"
+    assert name_in("App State Mountaineers", 2015) == "Appalachian State Mountaineers"
 
 
 def test_module_level_current_name_takes_a_league() -> None:
-    assert current_name("LIU Sharks", league=NCAAFB) == "LIU Sharks"
+    long_island = "Long Island University Sharks"
+
+    assert current_name(long_island, league=NCAAFB) == long_island
 
 
 def test_ambiguity_surfaces_through_the_module_level_helper() -> None:
