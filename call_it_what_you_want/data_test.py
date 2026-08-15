@@ -145,13 +145,6 @@ def test_unknown_namespace_lists_what_is_bundled() -> None:
         default_teams("underwater-basket-weaving")
 
 
-@pytest.mark.xfail(
-    reason="The bundled pull is football-only, so no team in it carries "
-    "names from two leagues yet. Flips back to passing once a basketball "
-    "pull lands; registry_test.py covers the property on a fixture "
-    "in the meantime.",
-    strict=True,
-)
 def test_college_sports_share_one_namespace() -> None:
     # Duke is 150 in football and both basketballs -- one row of teams,
     # names added to it per sport, not a new team per sport.
@@ -162,17 +155,26 @@ def test_college_sports_share_one_namespace() -> None:
 
 
 def test_module_level_helpers_use_the_bundled_data() -> None:
-    # ESPN went from "Appalachian State Mountaineers" to "App State
-    # Mountaineers" in 2024, which is on record either side of the change.
+    # ESPN's football feed went from "Appalachian State Mountaineers" to
+    # "App State Mountaineers" in 2024. Both basketball feeds had used the
+    # short name since 2001, so 2015 only has an answer once you say which
+    # sport you're asking about -- without a league it's two names at once.
     assert current_name("Appalachian State Mountaineers") == "App State Mountaineers"
     assert espn_id("Appalachian State Mountaineers") == "2026"
-    assert name_in("App State Mountaineers", 2015) == "Appalachian State Mountaineers"
+    assert (
+        name_in("App State Mountaineers", 2015, league=NCAAFB)
+        == "Appalachian State Mountaineers"
+    )
+    with pytest.raises(AmbiguousNameError, match="went by 2 names in 2015"):
+        name_in("App State Mountaineers", 2015)
 
 
 def test_module_level_current_name_takes_a_league() -> None:
-    long_island = "Long Island University Sharks"
-
-    assert current_name(long_island, league=NCAAFB) == long_island
+    # One id, one school, a different name depending on the sport: ESPN
+    # calls 149 the Grizzlies in football and men's basketball and the
+    # Lady Griz in women's, all in the same season.
+    assert current_name("Montana Grizzlies", league=NCAAWBB) == "Montana Lady Griz"
+    assert current_name("Montana Lady Griz", league=NCAAFB) == "Montana Grizzlies"
 
 
 def test_ambiguity_surfaces_through_the_module_level_helper() -> None:

@@ -8,9 +8,9 @@ teams/athletes/etc.
 ```python
 from call_it_what_you_want import current_name, espn_id, name_in
 
-current_name("Appalachian State Mountaineers")  # "App State Mountaineers"
-espn_id("Appalachian State Mountaineers")  # "2026"
-name_in("App State Mountaineers", 2015)  # "Appalachian State Mountaineers"
+current_name("Lock Haven Bald Eagles")  # "Lock Haven University Bald Eagles"
+espn_id("Lock Haven Bald Eagles")  # "209"
+name_in("Lock Haven University Bald Eagles", 2015)  # "Lock Haven Bald Eagles"
 ```
 
 A team is keyed by its ESPN team id, because that's the part that survives a
@@ -20,11 +20,11 @@ this league.*
 
 ```python
 Team(
-    espn_id="2439",
+    espn_id="149",
     names=(
-        TeamName("UNLV Rebels", 2025, "espn", "ncaafb"),
-        TeamName("UNLV Rebels", 2025, "espn", "ncaambb"),
-        TeamName("UNLV Lady Rebels", 2025, "espn", "ncaawbb"),
+        TeamName("Montana Grizzlies", 2025, "espn", "ncaafb"),
+        TeamName("Montana Grizzlies", 2025, "espn", "ncaambb"),
+        TeamName("Montana Lady Griz", 2025, "espn", "ncaawbb"),
     ),
 )
 ```
@@ -36,11 +36,16 @@ holds the last name seen until a different one shows up.
 
 ## Namespaces and leagues
 
-An ESPN id is unique within an **organization**, not within a sport. One
-school keeps its id across every college sport -- Duke is 150 in football,
-men's basketball, and women's basketball -- while each pro league numbers
-from scratch and collides with the NCAA (id 2 is both the Buffalo Bills and
-the Auburn Tigers).
+An ESPN id is unique within an **organization**, not within a sport. A
+school generally keeps its id across every college sport -- Duke is 150 in
+football, men's basketball, and women's basketball -- while each pro league
+numbers from scratch and collides with the NCAA (id 2 is both the Buffalo
+Bills and the Auburn Tigers).
+
+*Generally*, because ESPN doesn't hold to it for smaller programs: 147
+school names in the bundled data show up under two or more ids covering
+different sports, which is ESPN having issued a separate id per sport
+rather than two schools sharing a name. Those want a `same_as` row (below).
 
 So a registry covers one namespace, and all of college shares a single one:
 
@@ -56,15 +61,20 @@ teams = teams.with_teams(load("my_corrections.csv"))
 ```
 
 **League is a name context, not a namespace.** The same school in the same
-season has different names depending on which sport you asked about: `UNLV
-Rebels` / `UNLV Lady Rebels`, `The Citadel Bulldogs` (basketball) /
-`Citadel Bulldogs` (football). Because names pool into one team, you can
+season has different names depending on which sport you asked about:
+`Montana Grizzlies` / `Montana Lady Griz`, `Massachusetts Minutemen` /
+`Massachusetts Minutewomen`. Because names pool into one team, you can
 translate across that boundary:
 
 ```python
-current_name("UNLV Rebels", league="ncaawbb")  # "UNLV Lady Rebels"
-current_name("UNLV Lady Rebels", league="ncaafb")  # "UNLV Rebels"
+current_name("Montana Grizzlies", league="ncaawbb")  # "Montana Lady Griz"
+current_name("Montana Lady Griz", league="ncaafb")  # "Montana Grizzlies"
 ```
+
+A rename can also land in one sport before another. ESPN's football feed
+called 2026 `Appalachian State Mountaineers` until 2024; both basketball
+feeds had said `App State Mountaineers` since 2001. So `name_in(..., 2015)`
+has two right answers and needs a league to pick one.
 
 Asking without a league for a team whose name depends on one raises
 `AmbiguousNameError`, listing the candidates -- guessing would be a silent
@@ -82,14 +92,15 @@ id that should own it with `same_as`, and their names pool into one team
 while both ids keep resolving:
 
 ```python
-# with `112358,LIU Sharks,2025,espn,ncaambb,2341` in the file
-teams.by_espn_id("112358") == teams.by_espn_id("2341")  # True
-teams.by_espn_id("112358").espn_ids  # ("2341", "112358")
+# Purdue Northwest is filed under three ids, merged onto 368 in the data
+teams.by_espn_id("111911") == teams.by_espn_id("368")  # True
+teams.by_espn_id("111911").espn_ids  # ("368", "111995", "111911")
+espn_id("Purdue Northwest Pride")  # "368" -- answers with the canonical id
 ```
 
-The bundled data carries no `same_as` rows yet: the known duplicate pairs
-straddle football and basketball, and only the football side is in it so
-far.
+Until a duplicate is merged its name matches two teams, so `by_name` raises
+`AmbiguousTeamError` while `by_espn_id` keeps working for both. 182 names
+in the bundled data are still in that state.
 
 ### Bundled data
 
@@ -98,10 +109,9 @@ far.
 blank or left out entirely, so a file written without them still loads.
 Column order doesn't matter. One row per observation.
 
-`ncaa.csv` is an ESPN college football pull: 851 teams, 14,963
-observations, seasons 2001-2025, every row `source=espn` and
-`league=ncaafb`. Basketball is not in it yet, so no bundled team carries
-names from more than one league.
+`ncaa.csv` is an ESPN college pull: 1,777 teams, 42,520 observations,
+seasons 2001-2025, every row `source=espn`. Split by league that's 14,965
+football, 15,165 men's basketball, and 12,390 women's basketball.
 
 ## Recording what you find
 
