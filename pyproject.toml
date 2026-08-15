@@ -7,8 +7,17 @@ authors = []
 requires-python = ">=3.12"
 dependencies = []
 
+# The CLI is for getting locally recorded rows back into the package, so
+# it's opt-in -- callers who only translate names don't need fire.
+[project.optional-dependencies]
+cli = ["fire>=0.7.0"]
+
+[project.scripts]
+ciwyw = "call_it_what_you_want.cli:main"
+
 [dependency-groups]
 dev = [
+    "fire>=0.7.0",
     "ipykernel>=6.29.5",
     "pytest>=8.3.5",
     "ruff>=0.16.1",

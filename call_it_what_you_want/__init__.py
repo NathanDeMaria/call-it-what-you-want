@@ -3,10 +3,17 @@ from .data import (
     NCAA,
     OPTIONAL_COLUMNS,
     REQUIRED_COLUMNS,
+    NewNameWarning,
+    NewRecordWarning,
+    NewTeamWarning,
     default_teams,
     load,
+    local_csv,
+    merged_csv,
+    record,
     teams_from_csv,
 )
+from .local import clear_local, local_dir, local_path
 from .registry import AmbiguousTeamError, Teams, UnknownTeamError, normalize
 from .types import (
     ESPN,
