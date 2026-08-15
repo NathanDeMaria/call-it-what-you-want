@@ -8,9 +8,9 @@ teams/athletes/etc.
 ```python
 from call_it_what_you_want import current_name, espn_id, name_in
 
-current_name("Army Black Knights")  # "Army Knights"
-espn_id("Army Black Knights")  # "349"
-name_in("Army Knights", 2015)  # "Army Black Knights"
+current_name("Appalachian State Mountaineers")  # "App State Mountaineers"
+espn_id("Appalachian State Mountaineers")  # "2026"
+name_in("App State Mountaineers", 2015)  # "Appalachian State Mountaineers"
 ```
 
 A team is keyed by its ESPN team id, because that's the part that survives a
@@ -48,8 +48,8 @@ So a registry covers one namespace, and all of college shares a single one:
 from call_it_what_you_want import default_teams, load
 
 teams = default_teams("ncaa")  # football and both basketballs together
-teams.by_name("Army")  # -> Team
-teams.by_espn_id("349")  # -> Team
+teams.by_name("App State Mountaineers")  # -> Team
+teams.by_espn_id("2026")  # -> Team
 
 # Registries are immutable; corrections layer on top.
 teams = teams.with_teams(load("my_corrections.csv"))
@@ -82,9 +82,14 @@ id that should own it with `same_as`, and their names pool into one team
 while both ids keep resolving:
 
 ```python
+# with `112358,LIU Sharks,2025,espn,ncaambb,2341` in the file
 teams.by_espn_id("112358") == teams.by_espn_id("2341")  # True
 teams.by_espn_id("112358").espn_ids  # ("2341", "112358")
 ```
+
+The bundled data carries no `same_as` rows yet: the known duplicate pairs
+straddle football and basketball, and only the football side is in it so
+far.
 
 ### Bundled data
 
@@ -93,8 +98,10 @@ teams.by_espn_id("112358").espn_ids  # ("2341", "112358")
 blank or left out entirely, so a file written without them still loads.
 Column order doesn't matter. One row per observation.
 
-**This is a seed, not a dataset** -- a handful of teams covering each shape
-the schema supports. Populating it properly means a pull from ESPN.
+`ncaa.csv` is an ESPN college football pull: 851 teams, 14,963
+observations, seasons 2001-2025, every row `source=espn` and
+`league=ncaafb`. Basketball is not in it yet, so no bundled team carries
+names from more than one league.
 
 ## Recording what you find
 

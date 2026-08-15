@@ -45,8 +45,8 @@ def current_name(
     """
     Translate any name a team has gone by into the one to use now.
 
-    >>> current_name("Army Black Knights")
-    'Army Knights'
+    >>> current_name("Appalachian State Mountaineers")
+    'App State Mountaineers'
 
     Pass a `league` for a team whose name depends on the sport, which is
     also what resolves an AmbiguousNameError.
