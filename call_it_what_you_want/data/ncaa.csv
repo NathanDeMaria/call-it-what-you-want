@@ -1,12 +1,4 @@
 espn_id,name,year,source,league,same_as
-349,Army Black Knights,2012,espn,,
-349,Army Knights,2025,espn,,
-349,Army,2025,footballlocks,,
-150,Duke Blue Devils,2025,espn,ncaafb,
-150,Duke Blue Devils,2025,espn,ncaambb,
-150,Duke Blue Devils,2025,espn,ncaawbb,
-2341,LIU Sharks,2025,espn,ncaafb,
-112358,LIU Sharks,2025,espn,ncaambb,2341
 2,Auburn Tigers,2001,espn,ncaafb,
 2,Auburn Tigers,2002,espn,ncaafb,
 2,Auburn Tigers,2003,espn,ncaafb,
@@ -14968,3 +14960,4 @@ espn_id,name,year,source,league,same_as
 131108,New England College Pilgrims,2025,espn,ncaafb,
 131109,Roanoke College Maroons,2025,espn,ncaafb,
 131239,Rio Grande Red Storm,2025,espn,ncaafb,
+127078,Madonna University Madonna,2022,espn,ncaafb,
