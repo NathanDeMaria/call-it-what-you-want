@@ -96,6 +96,75 @@ Column order doesn't matter. One row per observation.
 **This is a seed, not a dataset** -- a handful of teams covering each shape
 the schema supports. Populating it properly means a pull from ESPN.
 
+## Recording what you find
+
+The bundled data will always be behind whatever you're actually scraping,
+so an application can hand back what it runs into. `record` files an
+observation, and returns whether it was one the data didn't already have:
+
+```python
+from call_it_what_you_want import record
+
+record("2426", "Navy Midshipmen", 2025)  # True, and warns
+record("2426", "Navy Midshipmen", 2025)  # False, silent
+```
+
+A new observation takes effect immediately -- `espn_id("Navy
+Midshipmen")` answers on the next line -- and warns so it doesn't slip
+by: `NewTeamWarning` for an ESPN id the data didn't have, `NewNameWarning`
+for a new name on a team it did. If the new id's name is already on
+another team, the warning says so, since that's usually a duplicate ESPN
+record that wants a `same_as` row rather than a team of its own.
+
+Filter them like any other warning:
+
+```python
+import warnings
+from call_it_what_you_want import NewRecordWarning
+
+warnings.simplefilter("ignore", NewRecordWarning)  # quiet
+warnings.simplefilter("error", NewRecordWarning)  # or fail the run
+```
+
+Recording is additive only. It appends rows and never edits or deletes
+one, because contradicting data that shipped is a judgement call rather
+than something an application should make in passing.
+
+### Where the rows go
+
+Not into the installed package -- that's read-only under most installs
+and a reinstall would wipe it. They go to one file per namespace under
+`$CIWYW_DATA_DIR`, else `$XDG_DATA_HOME/call-it-what-you-want`, else
+`~/.local/share/call-it-what-you-want`, and get layered over the bundled
+data on load. Set `CIWYW_DATA_DIR` per project to keep one application's
+discoveries out of another's, and use `default_teams(include_local=False)`
+for just what shipped.
+
+That file is a staging area, so getting the rows into the package is the
+other half of the loop. Install the CLI with the `cli` extra:
+
+```shell
+uv add 'call-it-what-you-want[cli]'
+```
+
+```shell
+ciwyw where    # the file rows are written to, and how many are in it
+ciwyw new      # just the rows that aren't in the package yet
+ciwyw count    # how many teams, bundled vs. recorded locally
+ciwyw show     # the bundled CSV with those rows appended
+```
+
+`ciwyw show --output` writes it, which is the commit:
+
+```shell
+ciwyw show --output call_it_what_you_want/data/ncaa.csv
+git diff  # exactly the new rows -- everything else passes through as written
+ciwyw clear --yes  # once they're committed, so they aren't carried twice
+```
+
+Every command takes a namespace as its first argument (`ciwyw new nfl`)
+and defaults to `ncaa`.
+
 ## Development
 
 Dependencies are managed with [uv](https://docs.astral.sh/uv/).

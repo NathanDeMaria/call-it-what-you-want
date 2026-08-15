@@ -1,11 +1,14 @@
 import csv
+import io
+import warnings
 from collections.abc import Iterable
 from functools import cache
 from importlib.resources import files
 from pathlib import Path
 
-from .registry import Teams
-from .types import Team, TeamName
+from .local import append_local, local_path, read_local
+from .registry import Teams, UnknownTeamError
+from .types import ESPN, Team, TeamName
 
 _PACKAGE = "call_it_what_you_want"
 _DATA_DIR = "data"
@@ -22,6 +25,37 @@ REQUIRED_COLUMNS = ("espn_id", "name", "year", "source")
 # loads.
 OPTIONAL_COLUMNS = ("league", "same_as")
 COLUMNS = REQUIRED_COLUMNS + OPTIONAL_COLUMNS
+
+
+class NewRecordWarning(UserWarning):
+    """
+    Raised by `record` when an observation wasn't already on file.
+
+    A warning rather than an error because discovering a name the data
+    doesn't have is normal and shouldn't stop an application -- the point
+    is that it's noisy enough to notice and get upstreamed. Silence it
+    with `warnings.simplefilter("ignore", NewRecordWarning)`, or promote
+    it to an exception with `"error"` to catch drift in a test run.
+    """
+
+
+class NewTeamWarning(NewRecordWarning):
+    """
+    An ESPN id that wasn't in the data at all.
+
+    Worth a closer look than a new name: it's either a team nobody had
+    looked at yet, or a duplicate ESPN record for a team already on file,
+    which wants a `same_as` row rather than a team of its own.
+    """
+
+
+class NewNameWarning(NewRecordWarning):
+    """
+    A team already on file, seen under a name that wasn't recorded.
+
+    Usually a rename, or the same school under another league's or
+    another source's spelling.
+    """
 
 
 def teams_from_csv(lines: Iterable[str]) -> Teams:
@@ -136,13 +170,26 @@ def load(path: str | Path) -> Teams:
 
 
 @cache
-def default_teams(namespace: str = NCAA) -> Teams:
+def default_teams(namespace: str = NCAA, *, include_local: bool = True) -> Teams:
     """
-    The registry bundled with the package for `namespace`.
+    The registry for `namespace`: the data bundled with the package, with
+    anything `record` has written locally layered on top.
+
+    Pass `include_local=False` for just what shipped, which is what to
+    compare against when you want to know what a machine has picked up.
 
     Cached, and registries are immutable, so this is cheap to call
-    repeatedly and no caller can modify what another one sees.
+    repeatedly and no caller can modify what another one sees. `record`
+    clears the cache when it writes.
     """
+    bundled = teams_from_csv(_bundled_text(namespace).splitlines())
+    lines = read_local(namespace) if include_local else []
+    if not lines:
+        return bundled
+    return bundled.with_teams(teams_from_csv(lines))
+
+
+def _bundled_text(namespace: str) -> str:
     resource = files(_PACKAGE).joinpath(_DATA_DIR, f"{namespace}.csv")
     if not resource.is_file():
         available = sorted(
@@ -156,4 +203,116 @@ def default_teams(namespace: str = NCAA) -> Teams:
             "Namespaces are organizations, not sports -- every college "
             "sport shares one. Use `load` to read a CSV of your own."
         )
-    return teams_from_csv(resource.read_text(encoding="utf-8").splitlines())
+    return resource.read_text(encoding="utf-8")
+
+
+def record(
+    espn_id: str,
+    name: str,
+    year: int,
+    *,
+    source: str = ESPN,
+    league: str | None = None,
+    namespace: str = NCAA,
+) -> bool:
+    """
+    Note that `source` called team `espn_id` `name` during the `year`
+    season, if that isn't already on file.
+
+    Returns whether the observation was new. A new one is appended to the
+    local file (see `local_path`), takes effect immediately for everyone
+    calling `default_teams`, and warns -- `NewTeamWarning` for an id the
+    data didn't have, `NewNameWarning` for a new name on a known team --
+    so it doesn't slip by unnoticed. An observation already on file is a
+    silent no-op, so this is safe to call on every row of a scrape.
+
+    Recording is deliberately additive: it never edits or removes a row,
+    because a name that turns out to be wrong is a judgement call about
+    data that shipped, not something an application should decide in
+    passing.
+    """
+    teams = default_teams(namespace)
+    observation = TeamName(name=name, year=year, source=source, league=league)
+    try:
+        team: Team | None = teams.by_espn_id(espn_id)
+    except UnknownTeamError:
+        team = None
+    if team is not None and observation in team.names:
+        return False
+
+    path = local_path(namespace)
+    in_league = "" if league is None else f", {league}"
+    if team is None:
+        shared = (
+            f" Another team is already called {name!r} -- if that's the same "
+            "school under a second ESPN record, it wants a `same_as` row "
+            "rather than a team of its own."
+            if name in teams
+            else ""
+        )
+        message = (
+            f"ESPN id {espn_id} ({name}, {year}{in_league}) isn't in the "
+            f"{namespace!r} data.{shared} Recorded in {path}."
+        )
+        category: type[NewRecordWarning] = NewTeamWarning
+    else:
+        message = (
+            f"ESPN id {espn_id} was seen as {name!r} in {year}{in_league}, "
+            f"which isn't on record for it. Recorded in {path}."
+        )
+        category = NewNameWarning
+    warnings.warn(message, category, stacklevel=2)
+
+    append_local(
+        namespace,
+        COLUMNS,
+        {
+            "espn_id": espn_id,
+            "name": name,
+            "year": str(year),
+            "source": source,
+            "league": league or "",
+            "same_as": "",
+        },
+    )
+    default_teams.cache_clear()
+    return True
+
+
+def merged_csv(namespace: str = NCAA) -> str:
+    """
+    The bundled CSV for `namespace` with the locally recorded rows
+    appended -- what the file in the package should look like once the
+    local additions are committed.
+
+    Rows are passed through as written rather than rebuilt from `Team`
+    objects, so `same_as` links and row order survive and the diff
+    against the shipped file is just the new lines.
+    """
+    rows = _rows(_bundled_text(namespace).splitlines()) + _rows(read_local(namespace))
+    return _to_csv(dict.fromkeys(rows))
+
+
+def local_csv(namespace: str = NCAA) -> str:
+    """
+    Just the locally recorded rows for `namespace`, as a CSV. Empty (not
+    even a header) if nothing has been recorded.
+    """
+    rows = _rows(read_local(namespace))
+    return _to_csv(dict.fromkeys(rows)) if rows else ""
+
+
+def _rows(lines: list[str]) -> list[tuple[str, ...]]:
+    if not lines:
+        return []
+    reader = csv.DictReader(lines)
+    _check_columns(tuple(reader.fieldnames or ()))
+    return [tuple((row.get(c) or "").strip() for c in COLUMNS) for row in reader]
+
+
+def _to_csv(rows: Iterable[tuple[str, ...]]) -> str:
+    out = io.StringIO()
+    writer = csv.writer(out, lineterminator="\n")
+    writer.writerow(COLUMNS)
+    writer.writerows(rows)
+    return out.getvalue()
