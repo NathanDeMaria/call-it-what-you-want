@@ -1,35 +1,68 @@
-from .data import COLUMNS, NCAAFB, default_teams, load, teams_from_csv
+from .data import (
+    COLUMNS,
+    NCAA,
+    OPTIONAL_COLUMNS,
+    REQUIRED_COLUMNS,
+    default_teams,
+    load,
+    teams_from_csv,
+)
 from .registry import AmbiguousTeamError, Teams, UnknownTeamError, normalize
-from .types import ESPN, NoNamesError, Team, TeamName
+from .types import (
+    ESPN,
+    NCAAFB,
+    NCAAMBB,
+    NCAAWBB,
+    AmbiguousNameError,
+    NoNamesError,
+    Team,
+    TeamName,
+)
 from .version import __version__
 
 
-def team(name: str, league: str = NCAAFB) -> Team:
+def team(name: str, *, namespace: str = NCAA) -> Team:
     """
-    The team known by `name`, from the bundled data for `league`.
+    The team known by `name`, from the bundled data for `namespace`.
     """
-    return default_teams(league).by_name(name)
+    return default_teams(namespace).by_name(name)
 
 
-def current_name(name: str, league: str = NCAAFB, source: str = ESPN) -> str:
+def current_name(
+    name: str,
+    *,
+    namespace: str = NCAA,
+    league: str | None = None,
+    source: str = ESPN,
+) -> str:
     """
     Translate any name a team has gone by into the one to use now.
 
     >>> current_name("Army Black Knights")
     'Army Knights'
+
+    Pass a `league` for a team whose name depends on the sport, which is
+    also what resolves an AmbiguousNameError.
     """
-    return default_teams(league).current_name(name, source)
+    return default_teams(namespace).current_name(name, source, league=league)
 
 
-def name_in(name: str, year: int, league: str = NCAAFB, source: str = ESPN) -> str:
+def name_in(
+    name: str,
+    year: int,
+    *,
+    namespace: str = NCAA,
+    league: str | None = None,
+    source: str = ESPN,
+) -> str:
     """
     Translate any name a team has gone by into what it was called in `year`.
     """
-    return default_teams(league).name_in(name, year, source)
+    return default_teams(namespace).name_in(name, year, source, league=league)
 
 
-def espn_id(name: str, league: str = NCAAFB) -> str:
+def espn_id(name: str, *, namespace: str = NCAA) -> str:
     """
-    The ESPN team id for any name a team has gone by.
+    The canonical ESPN team id for any name a team has gone by.
     """
-    return default_teams(league).espn_id(name)
+    return default_teams(namespace).espn_id(name)

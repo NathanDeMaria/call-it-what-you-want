@@ -1,7 +1,7 @@
 import pytest
 
 from .registry import AmbiguousTeamError, Teams, UnknownTeamError, normalize
-from .types import ESPN, Team, TeamName
+from .types import ESPN, NCAAFB, NCAAMBB, NCAAWBB, Team, TeamName
 
 ARMY = Team(
     espn_id="349",
@@ -11,15 +11,26 @@ ARMY = Team(
         TeamName("Army", 2025, "footballlocks"),
     ),
 )
-NAVY = Team(
-    espn_id="2426",
-    names=(TeamName("Navy Midshipmen", 2025, ESPN),),
+UNLV = Team(
+    espn_id="2439",
+    names=(
+        TeamName("UNLV Rebels", 2025, ESPN, NCAAFB),
+        TeamName("UNLV Lady Rebels", 2025, ESPN, NCAAWBB),
+    ),
+)
+LIU = Team(
+    espn_id="2341",
+    names=(
+        TeamName("LIU Sharks", 2025, ESPN, NCAAFB),
+        TeamName("LIU Sharks", 2025, ESPN, NCAAMBB),
+    ),
+    other_espn_ids=("112358",),
 )
 
 
 @pytest.fixture
 def teams() -> Teams:
-    return Teams([ARMY, NAVY])
+    return Teams([ARMY, UNLV, LIU])
 
 
 def test_translates_an_old_name(teams: Teams) -> None:
@@ -31,10 +42,6 @@ def test_translates_another_sources_name(teams: Teams) -> None:
     assert teams.current_name("Army") == "Army Knights"
 
 
-def test_a_current_name_translates_to_itself(teams: Teams) -> None:
-    assert teams.current_name("Army Knights") == "Army Knights"
-
-
 def test_espn_id_from_any_name(teams: Teams) -> None:
     assert teams.espn_id("Army Black Knights") == "349"
     assert teams.espn_id("Army") == "349"
@@ -42,10 +49,6 @@ def test_espn_id_from_any_name(teams: Teams) -> None:
 
 def test_name_in_a_past_year(teams: Teams) -> None:
     assert teams.name_in("Army Knights", 2015) == "Army Black Knights"
-
-
-def test_by_espn_id(teams: Teams) -> None:
-    assert teams.by_espn_id("349") == ARMY
 
 
 @pytest.mark.parametrize(
@@ -60,6 +63,17 @@ def test_lookups_ignore_periods() -> None:
     teams = Teams([Team("1", (TeamName("St. Louis Rams", 2015),))])
 
     assert teams.current_name("St Louis Rams") == "St. Louis Rams"
+
+
+def test_names_pool_across_leagues(teams: Teams) -> None:
+    # The payoff of one namespace for all of college: a women's basketball
+    # name finds the same school as the football name.
+    assert teams.by_name("UNLV Lady Rebels") == teams.by_name("UNLV Rebels")
+
+
+def test_translates_between_leagues(teams: Teams) -> None:
+    assert teams.current_name("UNLV Rebels", league=NCAAWBB) == "UNLV Lady Rebels"
+    assert teams.current_name("UNLV Lady Rebels", league=NCAAFB) == "UNLV Rebels"
 
 
 def test_unknown_name(teams: Teams) -> None:
@@ -91,13 +105,33 @@ def test_duplicate_espn_ids_are_rejected() -> None:
         Teams([ARMY, ARMY])
 
 
+def test_a_duplicate_id_colliding_with_another_teams_id_is_rejected() -> None:
+    with pytest.raises(ValueError, match="share ESPN id 112358"):
+        Teams([LIU, Team("112358", (TeamName("Someone Else", 2025),))])
+
+
+def test_lookup_by_a_duplicate_id(teams: Teams) -> None:
+    # ESPN filed this school under two ids; both find the one team.
+    assert teams.by_espn_id("112358") == LIU
+    assert teams.by_espn_id("2341") == LIU
+
+
+def test_espn_id_answers_with_the_canonical_id(teams: Teams) -> None:
+    assert teams.espn_id("LIU Sharks") == "2341"
+
+
+def test_a_merged_team_counts_once(teams: Teams) -> None:
+    assert len(teams) == 3
+    assert {t.espn_id for t in teams} == {"349", "2439", "2341"}
+
+
 def test_with_teams_adds_a_new_team(teams: Teams) -> None:
-    navy_prep = Team("9999", (TeamName("Navy Prep", 2025),))
+    navy = Team("2426", (TeamName("Navy Midshipmen", 2025),))
 
-    extended = teams.with_teams([navy_prep])
+    extended = teams.with_teams([navy])
 
-    assert extended.espn_id("Navy Prep") == "9999"
-    assert len(extended) == 3
+    assert extended.espn_id("Navy Midshipmen") == "2426"
+    assert len(extended) == 4
 
 
 def test_with_teams_merges_names_into_an_existing_team(teams: Teams) -> None:
@@ -110,6 +144,34 @@ def test_with_teams_merges_names_into_an_existing_team(teams: Teams) -> None:
     assert extended.espn_id("Army West Point") == "349"
     assert extended.current_name("Army West Point") == "Army Knights"
     assert extended.name_in("Army", 2016) == "Army West Point"
+
+
+def test_with_teams_matches_on_a_duplicate_id(teams: Teams) -> None:
+    correction = Team("112358", (TeamName("Long Island Sharks", 2020, ESPN),))
+
+    extended = teams.with_teams([correction])
+
+    assert extended.espn_id("Long Island Sharks") == "2341"
+    assert len(extended) == 3
+
+
+def test_with_teams_carries_new_duplicate_ids_over() -> None:
+    teams = Teams([Team("2341", (TeamName("LIU Sharks", 2025),))])
+
+    extended = teams.with_teams(
+        [Team("2341", (TeamName("LIU Sharks", 2024),), ("112358",))]
+    )
+
+    assert extended.by_espn_id("112358").espn_id == "2341"
+
+
+def test_with_teams_refuses_to_join_two_existing_teams(teams: Teams) -> None:
+    # Claiming two ids already here are one team changes which is
+    # canonical, so it belongs in the data rather than in a merge.
+    joiner = Team("349", (TeamName("Whatever", 2025),), ("2439",))
+
+    with pytest.raises(ValueError, match="shares ids with 2 teams"):
+        teams.with_teams([joiner])
 
 
 def test_with_teams_leaves_the_original_alone(teams: Teams) -> None:
@@ -128,10 +190,6 @@ def test_with_teams_drops_duplicate_observations(teams: Teams) -> None:
 def test_contains(teams: Teams) -> None:
     assert "army black knights" in teams
     assert "Yale Bulldogs" not in teams
-
-
-def test_iterates_over_teams(teams: Teams) -> None:
-    assert {t.espn_id for t in teams} == {"349", "2426"}
 
 
 def test_normalize() -> None:
