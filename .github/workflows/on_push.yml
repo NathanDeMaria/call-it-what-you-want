@@ -1,11 +1,11 @@
 name: Lint and test
 
 on:
-  # "**" rather than "*" so branch names with a slash in them still match.
+  # Push only builds main. Everything else gets its coverage from the
+  # pull_request trigger, so a branch with an open PR isn't built twice.
   push:
-    branches: [ "**" ]
+    branches: [ main ]
   pull_request:
-    branches: [ "**" ]
 
 jobs:
   lint:
