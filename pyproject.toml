@@ -9,8 +9,20 @@ dependencies = []
 
 # The CLI is for getting locally recorded rows back into the package, so
 # it's opt-in -- callers who only translate names don't need fire.
+#
+# `sync` is for building the knowledge base rather than reading it: it hits
+# ESPN over the network and reads stored seasons. Kept out of the base
+# install so translating a name stays a dependency-free operation, which is
+# what lets a serving image depend on this package without pulling an HTTP
+# stack in. `imports_test.py` is what keeps that true.
 [project.optional-dependencies]
 cli = ["fire>=0.7.0"]
+sync = [
+    "aiohttp>=3.8",
+    # Reading the stored seasons a sync reconciles names against. Brings
+    # `endgame` (and aiobotocore) with it.
+    "endgame-aws",
+]
 
 [project.scripts]
 ciwyw = "call_it_what_you_want.cli:main"

@@ -38,29 +38,36 @@ def local_dir() -> Path:
     return (Path(xdg) if xdg else Path.home() / ".local" / "share") / _APP_DIR
 
 
-def local_path(namespace: str) -> Path:
+def local_path(namespace: str, kind: str = "") -> Path:
     """
     The local file for `namespace`, whether or not it exists yet.
+
+    `kind` names a second kind of record kept for the same namespace --
+    classifications, say -- which gets its own file beside the names one.
+    Separate files rather than more columns, because the two are recorded
+    by different runs and upstreamed to different bundled CSVs.
     """
-    return local_dir() / f"{namespace}.csv"
+    return local_dir() / f"{namespace}{'_' + kind if kind else ''}.csv"
 
 
-def read_local(namespace: str) -> list[str]:
+def read_local(namespace: str, kind: str = "") -> list[str]:
     """
     The lines of the local file, header included, or [] if there isn't one.
     """
-    path = local_path(namespace)
+    path = local_path(namespace, kind)
     if not path.is_file():
         return []
     return path.read_text(encoding="utf-8").splitlines()
 
 
-def append_local(namespace: str, columns: tuple[str, ...], row: dict[str, str]) -> Path:
+def append_local(
+    namespace: str, columns: tuple[str, ...], row: dict[str, str], kind: str = ""
+) -> Path:
     """
     Add one row to the local file, creating it (and its directory) with a
     header if this is the first one. Returns the file it was written to.
     """
-    path = local_path(namespace)
+    path = local_path(namespace, kind)
     path.parent.mkdir(parents=True, exist_ok=True)
     empty = not path.is_file() or path.stat().st_size == 0
     with path.open("a", newline="", encoding="utf-8") as file:
@@ -71,14 +78,14 @@ def append_local(namespace: str, columns: tuple[str, ...], row: dict[str, str]) 
     return path
 
 
-def clear_local(namespace: str) -> bool:
+def clear_local(namespace: str, kind: str = "") -> bool:
     """
     Delete the local file for `namespace`. Returns whether there was one.
 
     For use once the rows have been committed to the package, so they
     aren't carried twice.
     """
-    path = local_path(namespace)
+    path = local_path(namespace, kind)
     if not path.is_file():
         return False
     path.unlink()

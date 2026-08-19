@@ -1,3 +1,15 @@
+from .classification import (
+    Classifications,
+    ConflictingClassificationWarning,
+    NewClassificationWarning,
+    TeamClassification,
+    classifications_from_csv,
+    default_classifications,
+    load_classifications,
+    local_classifications_csv,
+    merged_classifications_csv,
+    record_classification,
+)
 from .data import (
     COLUMNS,
     NCAA,
@@ -14,6 +26,7 @@ from .data import (
     teams_from_csv,
 )
 from .local import clear_local, local_dir, local_path
+from .namer import TeamNamer, namespace_for, registry_league
 from .registry import AmbiguousTeamError, Teams, UnknownTeamError, normalize
 from .types import (
     ESPN,
