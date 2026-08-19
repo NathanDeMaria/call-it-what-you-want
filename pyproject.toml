@@ -27,6 +27,12 @@ sync = [
 [project.scripts]
 ciwyw = "call_it_what_you_want.cli:main"
 
+# endgame-aws isn't published anywhere -- it's a subdirectory of the EndGame
+# repo, so it needs an explicit source or resolution fails outright. Pinned to
+# the same rev cassandra uses, since the two read the same stored seasons.
+[tool.uv.sources]
+endgame-aws = { git = "https://github.com/NathanDeMaria/EndGame.git", rev = "0c21854d76a0b5ddb8f71842cb4ddb1ecc2f0408", subdirectory = "py-endgame-aws" }
+
 [dependency-groups]
 dev = [
     "fire>=0.7.0",
