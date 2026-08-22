@@ -176,6 +176,14 @@ def _describe(classification: TeamClassification) -> str:
     return f"{classification.division}/{classification.conference}"
 
 
+def _normalize_conference(conference: str | None) -> str | None:
+    """Treat equivalent conference names as the same observation."""
+    if conference is None:
+        return None
+    normalized = conference.strip()
+    return normalized.removesuffix(" Conference") or None
+
+
 def classifications_from_csv(lines: Iterable[str]) -> Classifications:
     """
     Build a table from CSV rows of `espn_id,year,league,division`, plus the
@@ -198,7 +206,7 @@ def classifications_from_csv(lines: Iterable[str]) -> Classifications:
                 year=year,
                 league=row["league"],
                 division=row["division"],
-                conference=(row.get("conference") or "").strip() or None,
+                conference=_normalize_conference(row.get("conference")),
             )
         )
     return Classifications(observations)
@@ -284,9 +292,10 @@ def record_classification(
         year=year,
         league=league,
         division=division,
-        conference=conference,
+        conference=_normalize_conference(conference),
     )
-    known = default_classifications(namespace)
+    local = read_local(namespace, KIND)
+    known = classifications_from_csv(local) if local else Classifications(())
     # Keyed on the season rather than the exact observation: ESPN lists the
     # odd team under two conferences, and recording both would put a
     # conflict in the committed data that warns on every load afterwards.
@@ -319,7 +328,7 @@ def record_classification(
             "year": str(year),
             "league": league,
             "division": division,
-            "conference": conference or "",
+            "conference": _normalize_conference(conference) or "",
         },
         KIND,
     )
