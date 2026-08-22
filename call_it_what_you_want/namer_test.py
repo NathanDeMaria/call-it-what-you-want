@@ -1,8 +1,9 @@
 from datetime import datetime
 
+import pytest
 from endgame.types import Game
 
-from .data import default_teams, record, teams_from_csv
+from .data import NewNameWarning, default_teams, record, teams_from_csv
 from .namer import TeamNamer
 from .types import NCAAFB
 
@@ -98,7 +99,8 @@ def test_a_recorded_name_is_usable_immediately(tmp_path, monkeypatch) -> None:
     default_teams.cache_clear()
     try:
         # Army (349) is in the package's bundled data.
-        record("349", "Army Cadets", 2005, league=NCAAFB)
+        with pytest.warns(NewNameWarning):
+            record("349", "Army Cadets", 2005, league=NCAAFB)
         namer = TeamNamer.for_league("ncaafb")
         assert namer.canonical("Army Cadets") == namer.canonical("Army Black Knights")
     finally:
