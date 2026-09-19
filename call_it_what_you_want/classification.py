@@ -29,7 +29,9 @@ from importlib.resources import files
 from pathlib import Path
 from typing import NamedTuple
 
+from .data import default_teams
 from .local import append_local, local_path, read_local
+from .registry import Teams, UnknownTeamError
 
 _PACKAGE = "call_it_what_you_want"
 _DATA_DIR = "data"
@@ -92,12 +94,26 @@ class Classifications:
 
     Immutable, like `Teams`, so one caller's additions can't leak into
     another's view of the bundled data.
+
+    `teams` makes the table read across duplicate ESPN records. ESPN files
+    many small schools under one id per sport, and `same_as` pools those
+    into one team -- but a classification is recorded against whichever id
+    the football feed used, and the id `Teams.espn_id` answers with may be
+    the basketball one. Without the registry, Defiance is filed D-III under
+    190 and unfindable under its canonical 5793; California (PA) is D-II
+    under 2858 and unfindable under 131653. Given `teams`, every id of a
+    team is one key, whichever the observation or the question used.
     """
 
-    def __init__(self, classifications: Iterable[TeamClassification]) -> None:
+    def __init__(
+        self,
+        classifications: Iterable[TeamClassification],
+        teams: Teams | None = None,
+    ) -> None:
+        self._teams = teams
         grouped: dict[tuple[str, str], dict[int, TeamClassification]] = {}
         for observation in classifications:
-            key = (observation.espn_id, observation.league)
+            key = (self._canonical(observation.espn_id), observation.league)
             by_year = grouped.setdefault(key, {})
             clash = by_year.get(observation.year)
             if clash is None:
@@ -116,6 +132,15 @@ class Classifications:
             for key, by_year in grouped.items()
         }
 
+    def _canonical(self, espn_id: str) -> str:
+        """The id this table files `espn_id` under: its team's, when known."""
+        if self._teams is None:
+            return espn_id
+        try:
+            return self._teams.by_espn_id(espn_id).espn_id
+        except UnknownTeamError:
+            return espn_id
+
     def recorded_for(
         self, espn_id: str, year: int, league: str
     ) -> TeamClassification | None:
@@ -127,7 +152,8 @@ class Classifications:
         was this team". The record path needs the former, so re-running a
         scrape doesn't stage a second row for a season already covered.
         """
-        for observation in self._by_team.get((espn_id, league), ()):
+        key = (self._canonical(espn_id), league)
+        for observation in self._by_team.get(key, ()):
             if observation.year == year:
                 return observation
         return None
@@ -148,7 +174,7 @@ class Classifications:
         league will hit teams nobody has classified, and a tally is more
         useful there than a traceback.
         """
-        observations = self._by_team.get((espn_id, league))
+        observations = self._by_team.get((self._canonical(espn_id), league))
         if not observations:
             return None
         earlier = [c for c in observations if c.year <= year]
@@ -160,7 +186,7 @@ class Classifications:
         """
         A copy of this table with more observations layered on top.
         """
-        return Classifications(list(self) + list(classifications))
+        return Classifications(list(self) + list(classifications), self._teams)
 
     def __iter__(self) -> Iterator[TeamClassification]:
         for observations in self._by_team.values():
@@ -184,10 +210,13 @@ def _normalize_conference(conference: str | None) -> str | None:
     return normalized.removesuffix(" Conference") or None
 
 
-def classifications_from_csv(lines: Iterable[str]) -> Classifications:
+def classifications_from_csv(
+    lines: Iterable[str], teams: Teams | None = None
+) -> Classifications:
     """
     Build a table from CSV rows of `espn_id,year,league,division`, plus the
-    optional `conference` column.
+    optional `conference` column. `teams` is the registry to read duplicate
+    ids through; see `Classifications`.
     """
     reader = csv.DictReader(lines)
     _check_columns(tuple(reader.fieldnames or ()))
@@ -209,7 +238,7 @@ def classifications_from_csv(lines: Iterable[str]) -> Classifications:
                 conference=_normalize_conference(row.get("conference")),
             )
         )
-    return Classifications(observations)
+    return Classifications(observations, teams)
 
 
 def _check_columns(fields: tuple[str, ...]) -> None:
@@ -246,12 +275,22 @@ def default_classifications(
 
     Cached and immutable, like `default_teams`.
     `record_classification` clears the cache when it writes.
+
+    Read through the namespace's registry, so a team filed under one of its
+    duplicate ESPN ids is found under any of them.
     """
-    bundled = classifications_from_csv(_bundled_text(namespace).splitlines())
+    try:
+        teams = default_teams(namespace, include_local=include_local)
+    except ValueError:
+        # A namespace with no team data has nothing to read duplicates
+        # through, and -- like an unsurveyed namespace -- that is a working
+        # answer rather than a broken one.
+        teams = None
+    bundled = classifications_from_csv(_bundled_text(namespace).splitlines(), teams)
     lines = read_local(namespace, KIND) if include_local else []
     if not lines:
         return bundled
-    return bundled.with_classifications(classifications_from_csv(lines))
+    return bundled.with_classifications(classifications_from_csv(lines, teams))
 
 
 def _bundled_text(namespace: str) -> str:

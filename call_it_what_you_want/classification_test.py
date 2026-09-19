@@ -145,3 +145,52 @@ def test_a_namespace_with_no_bundled_classifications_is_empty_not_an_error() -> 
     as broken.
     """
     assert len(default_classifications("nfl")) == 0
+
+
+_DUPLICATE_TEAMS = """espn_id,name,year,source,league,same_as
+190,Defiance Yellow Jackets,2007,espn,ncaafb,
+5793,Defiance Yellow Jackets,2025,espn,ncaawbb,
+190,Defiance Yellow Jackets,2007,espn,ncaafb,5793
+"""
+_FILED_UNDER_190 = (
+    "espn_id,year,league,division,conference\n190,2007,ncaafb,NCAA Division III,\n"
+)
+_FILED_UNDER_5793 = (
+    "espn_id,year,league,division,conference\n5793,2007,ncaafb,NCAA Division III,\n"
+)
+
+
+def test_a_classification_is_found_under_any_of_a_teams_ids() -> None:
+    """ESPN files a small school under one id per sport; the classification
+    lands on the football one and the registry may answer with the other."""
+    from .data import teams_from_csv
+
+    teams = teams_from_csv(_DUPLICATE_TEAMS.splitlines())
+    assert teams.espn_id("Defiance Yellow Jackets") == "5793"
+
+    table = classifications_from_csv(_FILED_UNDER_190.splitlines(), teams)
+    assert _division(table, "5793", 2010) == "NCAA Division III"
+    assert _division(table, "190", 2010) == "NCAA Division III"
+    assert table.recorded_for("5793", 2007, "ncaafb") is not None
+    # An id the registry has never heard of is still its own key.
+    assert _division(table, "999", 2010) is None
+
+    # And the other way round: filed under the canonical id, asked by the duplicate.
+    flipped = classifications_from_csv(_FILED_UNDER_5793.splitlines(), teams)
+    assert _division(flipped, "190", 2010) == "NCAA Division III"
+
+
+def test_without_a_registry_ids_are_taken_literally() -> None:
+    table = classifications_from_csv(_FILED_UNDER_190.splitlines())
+    assert _division(table, "190", 2010) == "NCAA Division III"
+    assert _division(table, "5793", 2010) is None
+
+
+def test_the_bundled_table_reads_through_the_bundled_registry() -> None:
+    """Defiance, in the shipped data: filed under 190, canonical 5793."""
+    from .data import default_teams
+
+    teams = default_teams("ncaa", include_local=False)
+    canonical = teams.espn_id("Defiance Yellow Jackets")
+    table = default_classifications("ncaa", include_local=False)
+    assert table.classification_in(canonical, 2015, "ncaafb") is not None
