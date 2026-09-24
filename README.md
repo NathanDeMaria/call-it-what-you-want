@@ -113,6 +113,24 @@ Column order doesn't matter. One row per observation.
 seasons 2001-2025, every row `source=espn`. Split by league that's 14,965
 football, 15,165 men's basketball, and 12,390 women's basketball.
 
+`nfl.csv` is ESPN's season-by-season franchise list: 32 teams (31 before
+the Texans' 2002 debut), 893 observations, seasons 1999-2026, every row
+`source=espn` and `league=nfl`. The names are the ones each season's team
+record carries, so relocations and renames land in the season they
+happened -- the Raiders are Oakland through 2019 -- with one oddity kept as
+ESPN has it: Washington is "Washington" for 2019, the season before the
+name was dropped, as well as 2020-2021. Refresh a season with
+
+```shell
+ciwyw fetch nfl 2027   # the `sync` and `cli` extras
+ciwyw show nfl --output call_it_what_you_want/data/nfl.csv
+```
+
+College names don't come from `fetch`; they come from `ciwyw sync`, which
+reconciles ESPN's scoreboards against the seasons a consumer replays.
+`TeamNamer` still leaves the NFL alone, because endgame stores NFL teams by
+nickname ("chiefs") and none of ESPN's names would match.
+
 ## Recording what you find
 
 The bundled data will always be behind whatever you're actually scraping,

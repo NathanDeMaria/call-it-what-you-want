@@ -9,6 +9,9 @@ ESPN = "espn"
 NCAAFB = "ncaafb"
 NCAAMBB = "ncaambb"
 NCAAWBB = "ncaawbb"
+# A pro league numbers its teams from scratch, so it is an id namespace as
+# well as a league, and the one string serves as both.
+NFL = "nfl"
 
 
 class TeamName(NamedTuple):

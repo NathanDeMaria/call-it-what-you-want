@@ -15,7 +15,7 @@ _DATA_DIR = "data"
 
 # ESPN id namespaces. An id is unique within an organization, not within a
 # sport: every college sport shares one namespace, and each pro league
-# has its own that collides with it.
+# has its own that collides with it (`types.NFL` is the league's own name).
 NCAA = "ncaa"
 
 REQUIRED_COLUMNS = ("espn_id", "name", "year", "source")

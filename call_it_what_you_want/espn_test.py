@@ -2,7 +2,9 @@ import asyncio
 
 import pytest
 
-from .espn import TeamTier, _walk
+from .data import default_teams
+from .espn import TeamSighting, TeamTier, _sightings, _walk, record_names
+from .types import NFL
 
 _BASE = "https://example.test/seasons/2023/types/2"
 
@@ -124,3 +126,46 @@ def test_a_conference_walked_as_a_root_is_an_error() -> None:
 
     with pytest.raises(ValueError, match="no division"):
         asyncio.run(_walk(session, _BASE, "9", None))
+
+
+def test_a_pro_season_is_each_team_under_that_seasons_name() -> None:
+    """The listing only has ids; each team's own record has the name."""
+    session = _FakeSession(
+        {
+            "/seasons/2019/teams": _refs("teams", ["13", "24"]),
+            "/seasons/2019/teams/13": {"id": "13", "displayName": "Oakland Raiders"},
+            "/seasons/2019/teams/24": {
+                "id": "24",
+                "displayName": "Los Angeles Chargers",
+            },
+        }
+    )
+
+    found = asyncio.run(_sightings(session, f"{_BASE}/seasons/2019/teams"))
+
+    assert found == [
+        TeamSighting("13", "Oakland Raiders"),
+        TeamSighting("24", "Los Angeles Chargers"),
+    ]
+
+
+def test_recorded_names_go_to_the_leagues_own_namespace() -> None:
+    staged = record_names(
+        {
+            2020: [TeamSighting("13", "Las Vegas Raiders")],
+            2019: [TeamSighting("13", "Oakland Raiders")],
+        },
+        NFL,
+    )
+
+    raiders = default_teams(NFL).by_espn_id("13")
+    assert staged == 0  # both already bundled
+    assert raiders.current_name() == "Las Vegas Raiders"
+    assert default_teams(NFL).name_in("Las Vegas Raiders", 2019) == "Oakland Raiders"
+
+
+def test_a_new_season_is_staged_quietly() -> None:
+    staged = record_names({2031: [TeamSighting("13", "Las Vegas Raiders")]}, NFL)
+
+    assert staged == 1
+    assert default_teams(NFL).by_espn_id("13").current_name() == "Las Vegas Raiders"

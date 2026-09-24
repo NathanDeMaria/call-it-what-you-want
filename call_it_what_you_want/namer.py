@@ -19,7 +19,7 @@ Two things that look like details and aren't:
 keeps its id across football and both basketballs, while the NFL numbers from
 scratch and collides with the NCAA outright (id 2 is both the Buffalo Bills
 and the Auburn Tigers). So all three college leagues share one registry, and
-`nfl` deliberately has none rather than borrowing the wrong one.
+`nfl` has a registry of its own -- which this doesn't apply, below.
 
 *League, when asking for a name back.* The same team in the same season is
 "UNLV Rebels" in football and "UNLV Lady Rebels" in women's basketball, so
@@ -58,7 +58,9 @@ if TYPE_CHECKING:
 _LEAGUES = {"ncaafb": NCAAFB, "mens": NCAAMBB, "womens": NCAAWBB}
 
 # Which ESPN id namespace each league's teams are numbered in. `nfl` is
-# absent on purpose: it's a different namespace, and the college one would
+# absent on purpose. It has its own namespace now, but endgame stores NFL
+# teams by nickname ("chiefs"), which none of ESPN's names match, so every
+# game would count as unrecognized; and the college namespace would
 # resolve its team names to entirely different schools.
 _NAMESPACES = {"ncaafb": NCAA, "mens": NCAA, "womens": NCAA}
 

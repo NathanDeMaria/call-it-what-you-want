@@ -1,5 +1,5 @@
 """
-Filling in classifications from ESPN.
+Filling in classifications, and a pro league's names, from ESPN.
 
 The read side of this package is standard-library only, so this module is
 the one thing that needs the network. It's behind the `sync` extra, and
@@ -28,16 +28,29 @@ scoreboard can't.
 Division and conference names are ESPN's own strings, kept as-is rather
 than mapped onto a vocabulary of our own -- the point is to record what
 the source said.
+
+## A pro league's names
+
+The same API lists a pro league's teams season by season, and each
+season's team record carries the name the franchise went by then: id 13 is
+the "Oakland Raiders" in 2019 and the "Las Vegas Raiders" in 2020. That
+is the whole pull. College names come from `sync`, which crawls
+scoreboards and reconciles what it finds against the seasons stored in
+s3, because a college registry has thousands of teams and ESPN's names
+for them drift. A league of 32 franchises doesn't rename quietly, and the
+reconciling wouldn't work anyway: endgame stores NFL teams by nickname
+("chiefs"), which no ESPN name matches.
 """
 
 import asyncio
 import re
-from collections.abc import Iterable, Iterator
+import warnings
+from collections.abc import Iterable, Iterator, Mapping, Sequence
 from typing import Any, NamedTuple
 
 from .classification import record_classification
-from .data import NCAA
-from .types import NCAAFB, NCAAMBB, NCAAWBB
+from .data import NCAA, NewRecordWarning, record
+from .types import ESPN, NCAAFB, NCAAMBB, NCAAWBB, NFL
 
 _CORE_API = "https://sports.core.api.espn.com/v2/sports"
 # Listings are paged; every one we ask for fits well inside this.
@@ -61,6 +74,13 @@ _LEAGUES = {
 }
 
 
+# Pro leagues whose teams ESPN lists by season, as (sport, slug). Each is
+# its own id namespace, under the league's own name.
+_PRO_LEAGUES = {NFL: ("football", "nfl")}
+# Team records fetched at once. A season is one request per team.
+_CONCURRENT_TEAMS = 8
+
+
 class TeamTier(NamedTuple):
     """Where one team sat in one season, as ESPN files it."""
 
@@ -69,9 +89,21 @@ class TeamTier(NamedTuple):
     conference: str | None
 
 
+class TeamSighting(NamedTuple):
+    """One team, under the name ESPN gave it in one season."""
+
+    espn_id: str
+    name: str
+
+
 def leagues() -> tuple[str, ...]:
     """The leagues classifications can be fetched for."""
     return tuple(_LEAGUES)
+
+
+def pro_leagues() -> tuple[str, ...]:
+    """The pro leagues team names can be fetched for."""
+    return tuple(_PRO_LEAGUES)
 
 
 async def fetch_tiers(year: int, league: str) -> list[TeamTier]:
@@ -89,22 +121,55 @@ async def fetch_tiers(year: int, league: str) -> list[TeamTier]:
             f"Available: {', '.join(sorted(_LEAGUES))}."
         ) from None
 
-    try:
-        import aiohttp
-    except ImportError:
-        raise RuntimeError(
-            "Fetching classifications needs aiohttp: "
-            "pip install 'call-it-what-you-want[sync]'"
-        ) from None
-
     base = f"{_CORE_API}/{groups.sport}/leagues/{groups.slug}/seasons/{year}/types/2"
-    async with aiohttp.ClientSession(
-        raise_for_status=True, timeout=aiohttp.ClientTimeout(total=60)
-    ) as session:
+    async with _session() as session:
         found: list[list[TeamTier]] = await asyncio.gather(
             *(_walk(session, base, root, None) for root in groups.roots)
         )
     return [tier for group in found for tier in group]
+
+
+async def fetch_names(year: int, league: str) -> list[TeamSighting]:
+    """
+    Every team in one season of a pro league, under that season's name.
+
+    Returns them rather than recording them, like `fetch_tiers`.
+    """
+    try:
+        sport, slug = _PRO_LEAGUES[league]
+    except KeyError:
+        raise ValueError(
+            f"No ESPN team listing known for league {league!r}. "
+            f"Available: {', '.join(sorted(_PRO_LEAGUES))}."
+        ) from None
+    async with _session() as session:
+        return await _sightings(
+            session, f"{_CORE_API}/{sport}/leagues/{slug}/seasons/{year}/teams"
+        )
+
+
+def record_names(found: Mapping[int, Sequence[TeamSighting]], league: str) -> int:
+    """
+    Stage what `fetch_names` found, by season, under the league's namespace.
+
+    Returns how many observations were new. Recorded a team at a time,
+    season order within each, so a first pull reads as one block per
+    franchise rather than one per season. Quiet about each new row: a
+    first pull is nothing but new rows, and the count is the report.
+    """
+    rows = sorted(
+        (
+            (int(sighting.espn_id), year, sighting.name)
+            for year, season in found.items()
+            for sighting in season
+        )
+    )
+    with warnings.catch_warnings():
+        warnings.simplefilter("ignore", NewRecordWarning)
+        return sum(
+            record(str(team), name, year, source=ESPN, league=league, namespace=league)
+            for team, year, name in rows
+        )
 
 
 async def record_tiers(year: int, league: str, *, namespace: str = NCAA) -> int:
@@ -126,6 +191,37 @@ async def record_tiers(year: int, league: str, *, namespace: str = NCAA) -> int:
         )
         for tier in tiers
     )
+
+
+def _session() -> Any:
+    try:
+        import aiohttp
+    except ImportError:
+        raise RuntimeError(
+            "Fetching from ESPN needs aiohttp: "
+            "pip install 'call-it-what-you-want[sync]'"
+        ) from None
+    return aiohttp.ClientSession(
+        raise_for_status=True, timeout=aiohttp.ClientTimeout(total=60)
+    )
+
+
+async def _sightings(session: Any, url: str) -> list[TeamSighting]:
+    """
+    Each team a season's listing names, fetched for the name it went by.
+
+    Unlike a conference roster, this listing is the whole question: the
+    name is only in each team's own record.
+    """
+    limit = asyncio.Semaphore(_CONCURRENT_TEAMS)
+
+    async def one(team_id: str) -> TeamSighting:
+        async with limit:
+            team = await _get_json(session, f"{url}/{team_id}")
+        return TeamSighting(team_id, team["displayName"])
+
+    ids = await _listed_ids(session, url, _TEAM_ID)
+    return list(await asyncio.gather(*(one(team_id) for team_id in ids)))
 
 
 async def _walk(
