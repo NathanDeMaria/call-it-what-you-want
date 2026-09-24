@@ -4,7 +4,7 @@ import pytest
 
 from . import current_name, espn_id, name_in
 from .data import default_teams, load, teams_from_csv
-from .types import NCAAFB, NCAAWBB, AmbiguousNameError
+from .types import NCAAFB, NCAAWBB, NFL, AmbiguousNameError
 
 CSV = """espn_id,name,year,source,league,same_as
 349,Army Black Knights,2012,espn,,
@@ -152,6 +152,19 @@ def test_college_sports_share_one_namespace() -> None:
 
     assert duke.current_name(league=NCAAFB) == "Duke Blue Devils"
     assert duke.current_name(league=NCAAWBB) == "Duke Blue Devils"
+
+
+def test_the_nfl_is_its_own_namespace() -> None:
+    # id 2 is the Buffalo Bills in one and the Auburn Tigers in the other.
+    assert default_teams(NFL).by_espn_id("2").current_name() == "Buffalo Bills"
+    assert default_teams().by_espn_id("2").current_name() == "Auburn Tigers"
+    assert len(default_teams(NFL)) == 32
+
+
+def test_nfl_names_follow_relocations() -> None:
+    assert current_name("San Diego Chargers", namespace=NFL) == "Los Angeles Chargers"
+    assert name_in("Los Angeles Rams", 2015, namespace=NFL) == "St. Louis Rams"
+    assert espn_id("Washington Redskins", namespace=NFL) == "28"
 
 
 def test_module_level_helpers_use_the_bundled_data() -> None:

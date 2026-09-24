@@ -33,6 +33,7 @@ from .types import (
     NCAAFB,
     NCAAMBB,
     NCAAWBB,
+    NFL,
     AmbiguousNameError,
     NoNamesError,
     Team,

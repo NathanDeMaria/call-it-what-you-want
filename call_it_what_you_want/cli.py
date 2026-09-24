@@ -154,6 +154,31 @@ class Records:
 
         sync_main(*args, **kwargs)
 
+    def fetch(self, league: str, start: int, end: int | None = None) -> None:
+        """
+        Look up a pro league's team names on ESPN and stage what's new,
+        under the league's own namespace.
+
+            ciwyw fetch nfl 2026
+            ciwyw fetch nfl 1999 2026
+
+        Seasons are fetched one at a time, a request per team each, and
+        recorded together at the end. College names come from `sync`.
+        """
+        from .espn import fetch_names, pro_leagues, record_names
+
+        if league not in pro_leagues():
+            raise SystemExit(
+                f"No ESPN team listing known for {league!r}. "
+                f"Available: {', '.join(sorted(pro_leagues()))}."
+            )
+        found = {}
+        for year in range(start, (end or start) + 1):
+            found[year] = asyncio.run(fetch_names(year, league))
+            print(f"{year}: {len(found[year])} teams", file=sys.stderr)
+        staged = record_names(found, league)
+        print(f"Staged {staged} observations in {local_path(league)}.", file=sys.stderr)
+
     def show(self, namespace: str = NCAA, output: str | None = None) -> None:
         """
         Print the bundled CSV with the local additions appended -- what
