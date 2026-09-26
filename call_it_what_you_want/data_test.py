@@ -4,7 +4,16 @@ import pytest
 
 from . import current_name, espn_id, name_in
 from .data import default_teams, load, teams_from_csv
-from .types import NCAAFB, NCAAWBB, NFL, AmbiguousNameError
+from .types import (
+    ENDGAME,
+    KALSHI,
+    NCAAFB,
+    NCAAMBB,
+    NCAAWBB,
+    NFL,
+    POLYMARKET,
+    AmbiguousNameError,
+)
 
 CSV = """espn_id,name,year,source,league,same_as
 349,Army Black Knights,2012,espn,,
@@ -195,3 +204,36 @@ def test_ambiguity_surfaces_through_the_module_level_helper() -> None:
 
     with pytest.raises(AmbiguousNameError):
         teams.current_name("UNLV Rebels")
+
+
+@pytest.mark.parametrize("venue", [KALSHI, POLYMARKET])
+def test_every_nfl_franchise_has_its_venue_names(venue: str) -> None:
+    teams = default_teams(NFL, include_local=False)
+
+    unnamed = [t.espn_id for t in teams if not t.names_from(venue, league=NFL)]
+
+    assert len(teams) == 32
+    assert unnamed == []
+
+
+def test_bundled_venue_codes_resolve_scoped() -> None:
+    # The lookup a pull does with a code off a ticker.
+    assert espn_id("OSU", source=KALSHI, league=NCAAFB) == "194"
+    assert espn_id("dxst", source=POLYMARKET, league=NCAAMBB) == "3101"
+    assert espn_id("LAR", namespace=NFL, source=KALSHI, league=NFL) == "14"
+
+
+def test_endgame_names_are_its_nfl_team_enum() -> None:
+    # endgame stores an NFL game's teams as `NflTeam` member names, so
+    # every one of them has to land on exactly one franchise here.
+    teams_module = pytest.importorskip("endgame.nfl.teams")
+    teams = default_teams(NFL, include_local=False)
+
+    placed = {
+        member.name: teams.espn_id(member.name, source=ENDGAME, league=NFL)
+        for member in teams_module.NflTeam
+    }
+
+    assert len(placed) == 32
+    assert len(set(placed.values())) == 32
+    assert placed["niners"] == teams.espn_id("San Francisco 49ers")
