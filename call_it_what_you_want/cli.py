@@ -17,7 +17,7 @@ from .classification import (
     local_classifications_csv,
     merged_classifications_csv,
 )
-from .data import NCAA, default_teams, local_csv, merged_csv
+from .data import NCAA, default_teams, local_csv, merged_csv, record_all
 from .local import clear_local, local_path
 
 
@@ -178,6 +178,51 @@ class Records:
             print(f"{year}: {len(found[year])} teams", file=sys.stderr)
         staged = record_names(found, league)
         print(f"Staged {staged} observations in {local_path(league)}.", file=sys.stderr)
+
+    def venues(self, venue: str, league: str, year: int, check: bool = False) -> None:
+        """
+        Read a prediction market's roster for a league, tie each team to its
+        ESPN id, and stage the venue's code and names for the ones that tie.
+
+            ciwyw venues kalshi ncaafb 2026
+            ciwyw venues polymarket ncaambb 2026 --check
+
+        `year` is the season the roster is being read for. The teams that
+        didn't place are printed, one per line, with why -- a school ESPN
+        never listed, or a spelling that wants a hand-written row. --check
+        prints the same report and stages nothing.
+        """
+        from .venues import fetch_roster, namespace_for, observations, place
+
+        namespace = namespace_for(league)
+        roster = asyncio.run(fetch_roster(venue, league))
+        teams = default_teams(namespace)
+        placed, found = 0, []
+        for team in sorted(roster, key=lambda t: t.code):
+            placement = place(teams, team)
+            if placement.espn_id is None:
+                print(f"{team.code}\t{' | '.join(team.names)}\t{placement.how}")
+                continue
+            placed += 1
+            names, skipped = observations(teams, placement, year)
+            found.extend(names)
+            for name in skipped:
+                print(
+                    f"{team.code}\tleft out {name!r}: already another team's ESPN name",
+                    file=sys.stderr,
+                )
+        staged = (
+            ""
+            if check
+            else (
+                f", staged {record_all(found, namespace=namespace)} new observations "
+                f"in {local_path(namespace)}"
+            )
+        )
+        print(
+            f"{venue} {league}: placed {placed} of {len(roster)} teams{staged}.",
+            file=sys.stderr,
+        )
 
     def show(self, namespace: str = NCAA, output: str | None = None) -> None:
         """

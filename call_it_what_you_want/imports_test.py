@@ -10,7 +10,8 @@ import subprocess
 import sys
 
 # What the `sync` extra brings in. None of it may be imported by the base
-# package -- `candidates`, `espn` and `sync` are the modules allowed to.
+# package -- `candidates`, `espn`, `sync` and `venues` are the modules
+# allowed to.
 _EXTRA_ONLY = ("aiohttp", "endgame", "endgame_aws", "aiobotocore", "fire")
 
 
