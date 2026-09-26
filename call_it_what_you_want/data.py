@@ -263,20 +263,58 @@ def record(
         category = NewNameWarning
     warnings.warn(message, category, stacklevel=2)
 
+    _append(namespace, espn_id, observation)
+    default_teams.cache_clear()
+    return True
+
+
+def record_all(
+    observations: Iterable[tuple[str, TeamName]], *, namespace: str = NCAA
+) -> int:
+    """
+    `record` for a batch of `(espn_id, TeamName)` pairs, quietly.
+
+    Returns how many were new. For a scrape that expects thousands of new
+    rows: `record` re-reads the registry after every one so that the next
+    call sees it, which is right for an application that finds one name
+    and minutes of CSV parsing for a roster. This reads it once, checks
+    each observation against it and against the batch so far, and warns
+    nothing -- the count is the report.
+
+    Only for ids already in the registry. A new team is a question for a
+    person (is it a duplicate ESPN record?), so an unknown id raises
+    UnknownTeamError here rather than being filed without the warning
+    `record` would give it.
+    """
+    teams = default_teams(namespace)
+    seen: set[tuple[str, TeamName]] = set()
+    new = []
+    for espn_id, observation in observations:
+        team = teams.by_espn_id(espn_id)
+        if observation in team.names or (team.espn_id, observation) in seen:
+            continue
+        seen.add((team.espn_id, observation))
+        new.append((espn_id, observation))
+    for espn_id, observation in new:
+        _append(namespace, espn_id, observation)
+    if new:
+        default_teams.cache_clear()
+    return len(new)
+
+
+def _append(namespace: str, espn_id: str, observation: TeamName) -> None:
     append_local(
         namespace,
         COLUMNS,
         {
             "espn_id": espn_id,
-            "name": name,
-            "year": str(year),
-            "source": source,
-            "league": league or "",
+            "name": observation.name,
+            "year": str(observation.year),
+            "source": observation.source,
+            "league": observation.league or "",
             "same_as": "",
         },
     )
-    default_teams.cache_clear()
-    return True
 
 
 def merged_csv(namespace: str = NCAA) -> str:
