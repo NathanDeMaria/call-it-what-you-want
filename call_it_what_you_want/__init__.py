@@ -29,11 +29,14 @@ from .local import clear_local, local_dir, local_path
 from .namer import TeamNamer, namespace_for, registry_league
 from .registry import AmbiguousTeamError, Teams, UnknownTeamError, normalize
 from .types import (
+    ENDGAME,
     ESPN,
+    KALSHI,
     NCAAFB,
     NCAAMBB,
     NCAAWBB,
     NFL,
+    POLYMARKET,
     AmbiguousNameError,
     NoNamesError,
     Team,
@@ -42,11 +45,20 @@ from .types import (
 from .version import __version__
 
 
-def team(name: str, *, namespace: str = NCAA) -> Team:
+def team(
+    name: str,
+    *,
+    namespace: str = NCAA,
+    source: str | None = None,
+    league: str | None = None,
+) -> Team:
     """
     The team known by `name`, from the bundled data for `namespace`.
+
+    `source` and `league` scope the match to how one source spells teams
+    in one league -- see `Teams.by_name`.
     """
-    return default_teams(namespace).by_name(name)
+    return default_teams(namespace).by_name(name, source=source, league=league)
 
 
 def current_name(
@@ -82,8 +94,17 @@ def name_in(
     return default_teams(namespace).name_in(name, year, source, league=league)
 
 
-def espn_id(name: str, *, namespace: str = NCAA) -> str:
+def espn_id(
+    name: str,
+    *,
+    namespace: str = NCAA,
+    source: str | None = None,
+    league: str | None = None,
+) -> str:
     """
     The canonical ESPN team id for any name a team has gone by.
+
+    >>> espn_id("OSU", source="kalshi", league="ncaafb")
+    '194'
     """
-    return default_teams(namespace).espn_id(name)
+    return default_teams(namespace).espn_id(name, source=source, league=league)

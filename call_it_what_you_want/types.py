@@ -2,6 +2,15 @@ from typing import NamedTuple
 
 # Name sources. These are just labels -- callers can use their own.
 ESPN = "espn"
+# The prediction markets. Each writes a team as a short code in its tickers
+# and slugs ("OSU", "sdak") and as display names elsewhere, and both are
+# recorded under the venue so a lookup can be scoped to how that venue
+# spells things. See `venues`.
+KALSHI = "kalshi"
+POLYMARKET = "polymarket"
+# What endgame stores a team as, where that isn't an ESPN name: the NFL,
+# which it keeps by lowercased nickname ("chiefs", "niners").
+ENDGAME = "endgame"
 
 # Leagues, as a name context rather than an id namespace. ESPN calls the
 # same school different things depending on which league you asked about,
