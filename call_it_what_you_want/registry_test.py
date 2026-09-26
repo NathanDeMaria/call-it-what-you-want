@@ -194,3 +194,72 @@ def test_contains(teams: Teams) -> None:
 
 def test_normalize() -> None:
     assert normalize("  St.  LOUIS   Rams ") == "st louis rams"
+
+
+# Two schools a venue writes with the same code in different leagues, the
+# way Kalshi writes Holy Cross and Huntingdon as `HC`.
+HOLY_CROSS = Team(
+    "107",
+    (
+        TeamName("Holy Cross Crusaders", 2025, ESPN),
+        TeamName("HC", 2026, "kalshi", NCAAWBB),
+    ),
+)
+HUNTINGDON = Team(
+    "2306",
+    (
+        TeamName("Huntingdon Hawks", 2025, ESPN),
+        TeamName("HC", 2026, "kalshi", NCAAMBB),
+    ),
+)
+
+
+def test_a_league_scope_tells_apart_codes_that_collide_across_leagues() -> None:
+    teams = Teams([HOLY_CROSS, HUNTINGDON])
+
+    assert teams.by_name("HC", source="kalshi", league=NCAAWBB) == HOLY_CROSS
+    assert teams.by_name("HC", source="kalshi", league=NCAAMBB) == HUNTINGDON
+    with pytest.raises(AmbiguousTeamError, match="matches 2 teams"):
+        teams.by_name("HC")
+
+
+def test_a_source_scope_ignores_other_sources_spellings(teams: Teams) -> None:
+    # footballlocks' "Army" isn't an ESPN name, so asking ESPN's names for
+    # it finds nothing -- and says what was asked, so a miss is legible.
+    with pytest.raises(UnknownTeamError, match="from 'espn'"):
+        teams.by_name("Army", source=ESPN)
+    assert teams.by_name("Army", source="footballlocks") == ARMY
+
+
+def test_a_name_without_a_league_matches_any_league_scope(teams: Teams) -> None:
+    assert teams.by_name("Army Knights", source=ESPN, league=NCAAFB) == ARMY
+
+
+def test_a_league_scope_excludes_names_seen_only_in_another_league(
+    teams: Teams,
+) -> None:
+    assert teams.by_name("UNLV Lady Rebels", league=NCAAWBB) == UNLV
+    with pytest.raises(UnknownTeamError, match="in 'ncaafb'"):
+        teams.by_name("UNLV Lady Rebels", league=NCAAFB)
+
+
+def test_scoped_espn_id() -> None:
+    teams = Teams([HOLY_CROSS, HUNTINGDON])
+
+    assert teams.espn_id("hc", source="kalshi", league=NCAAMBB) == "2306"
+
+
+def test_find_returns_every_team_a_code_could_be() -> None:
+    # Kalshi writes Washington State and Wayne State both as WSU, in one
+    # league; the opponent and the date are what pick between them.
+    washington_state = Team("265", (TeamName("WSU", 2026, "kalshi", NCAAFB),))
+    wayne_state = Team("2851", (TeamName("WSU", 2026, "kalshi", NCAAFB),))
+    teams = Teams([wayne_state, washington_state])
+
+    assert teams.find("WSU", source="kalshi", league=NCAAFB) == (
+        washington_state,
+        wayne_state,
+    )
+    assert teams.find("WSU", source="kalshi", league=NCAAMBB) == ()
+    with pytest.raises(AmbiguousTeamError, match="ESPN ids 265, 2851"):
+        teams.by_name("WSU", source="kalshi", league=NCAAFB)

@@ -77,22 +77,63 @@ class Teams:
         except KeyError:
             raise UnknownTeamError(f"No team with ESPN id {espn_id!r}") from None
 
-    def by_name(self, name: str) -> Team:
+    def by_name(
+        self, name: str, *, source: str | None = None, league: str | None = None
+    ) -> Team:
         """
         The team known by `name`, under any source, league, or year.
 
+        `source` and `league` narrow what counts as a match: only names
+        that source was seen using, and only names seen in that league (a
+        name recorded without one still matches, since it holds in every
+        league). Left out, they match everything, as before.
+
+        Scoping is what makes a venue's short codes usable. Kalshi's `HC`
+        is Holy Cross in women's basketball and Huntingdon in men's, and a
+        code like `MIA` should be read the way the source that wrote it
+        meant it, not weighed against every other source's spellings.
+
         Raises UnknownTeamError if nothing matches and AmbiguousTeamError
-        if more than one team does.
+        if more than one team does -- `find` is the same lookup without
+        the second.
         """
-        ids = self._by_name.get(normalize(name))
-        if not ids:
-            raise UnknownTeamError(f"No team named {name!r}")
-        if len(ids) > 1:
+        found = self.find(name, source=source, league=league)
+        scope = _describe_scope(source, league)
+        if not found:
+            raise UnknownTeamError(f"No team named {name!r}{scope}")
+        if len(found) > 1:
             raise AmbiguousTeamError(
-                f"{name!r} matches {len(ids)} teams (ESPN ids "
-                f"{', '.join(sorted(ids))}). Look it up by id instead."
+                f"{name!r} matches {len(found)} teams{scope} (ESPN ids "
+                f"{', '.join(t.espn_id for t in found)}). Look it up by id "
+                "instead."
             )
-        return self._by_id[next(iter(ids))]
+        return found[0]
+
+    def find(
+        self, name: str, *, source: str | None = None, league: str | None = None
+    ) -> tuple[Team, ...]:
+        """
+        Every team known by `name`, scoped the way `by_name` is, in ESPN id
+        order. Empty when nothing matches.
+
+        For a caller that has something else to decide with. Even scoped to
+        one league a venue's code can be two schools -- Kalshi writes both
+        Washington State and Wayne State as `WSU` in college football -- and
+        the game it's attached to is what says which: only one of them is
+        playing that opponent on that date.
+        """
+        key = normalize(name)
+        ids = self._by_name.get(key, set())
+        if source is not None or league is not None:
+            ids = {
+                espn_id
+                for espn_id in ids
+                if any(
+                    _observed_as(observed, key, source, league)
+                    for observed in self._by_id[espn_id].names
+                )
+            }
+        return tuple(self._by_id[espn_id] for espn_id in sorted(ids, key=_id_order))
 
     def current_name(
         self, name: str, source: str = ESPN, *, league: str | None = None
@@ -111,11 +152,14 @@ class Teams:
         """
         return self.by_name(name).name_in(year, source, league=league)
 
-    def espn_id(self, name: str) -> str:
+    def espn_id(
+        self, name: str, *, source: str | None = None, league: str | None = None
+    ) -> str:
         """
-        The canonical ESPN team id for any name a team has gone by.
+        The canonical ESPN team id for any name a team has gone by, scoped
+        to a source and league the way `by_name` is.
         """
-        return self.by_name(name).espn_id
+        return self.by_name(name, source=source, league=league).espn_id
 
     def with_teams(self, teams: Iterable[Team]) -> "Teams":
         """
@@ -163,6 +207,29 @@ class Teams:
 
     def __contains__(self, name: str) -> bool:
         return normalize(name) in self._by_name
+
+
+def _id_order(espn_id: str) -> tuple[int, str]:
+    # ESPN ids are numeric strings; sorted as numbers where they are, so an
+    # error message and `find` read 2, 10, 107 rather than 10, 107, 2.
+    return (int(espn_id), "") if espn_id.isdigit() else (0, espn_id)
+
+
+def _observed_as(
+    observed: TeamName, key: str, source: str | None, league: str | None
+) -> bool:
+    return (
+        normalize(observed.name) == key
+        and (source is None or observed.source == source)
+        and (league is None or observed.league in (league, None))
+    )
+
+
+def _describe_scope(source: str | None, league: str | None) -> str:
+    parts = [f"from {source!r}"] if source is not None else []
+    if league is not None:
+        parts.append(f"in {league!r}")
+    return f" ({' '.join(parts)})" if parts else ""
 
 
 def _dedupe(names: Iterable[TeamName]) -> tuple[TeamName, ...]:
