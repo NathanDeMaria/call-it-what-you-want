@@ -85,6 +85,21 @@ A name that matches no team raises `UnknownTeamError`; one that matches
 several raises `AmbiguousTeamError` rather than guessing, since sharing a
 nickname is normal in college sports.
 
+**Scope a lookup to a source.** A name matches under any source by
+default, which is right for full names and wrong for codes. `source` and
+`league` narrow a lookup to how one source spells teams in one league:
+
+```python
+espn_id("OSU", source="kalshi", league="ncaafb")  # "194"
+espn_id("HC", source="kalshi", league="ncaawbb")  # Holy Cross
+espn_id("HC", source="kalshi", league="ncaambb")  # Huntingdon
+```
+
+A venue's code can be two schools even then -- Kalshi writes Washington
+State and Wayne State both as `WSU` in college football -- so `find`
+returns every match instead of raising, for a caller with something else
+to decide by, like which of them was playing that day.
+
 ## Duplicate ESPN records
 
 ESPN occasionally files one school under two ids. Point the duplicate at the
@@ -110,8 +125,10 @@ blank or left out entirely, so a file written without them still loads.
 Column order doesn't matter. One row per observation.
 
 `ncaa.csv` is an ESPN college pull: 1,777 teams, 42,520 observations,
-seasons 2001-2025, every row `source=espn`. Split by league that's 14,965
-football, 15,165 men's basketball, and 12,390 women's basketball.
+seasons 2001-2025, `source=espn`. Split by league that's 14,965
+football, 15,165 men's basketball, and 12,390 women's basketball. On top
+of that it carries the prediction markets' names for the same teams,
+`source=kalshi` and `source=polymarket` -- see below.
 
 `nfl.csv` is ESPN's season-by-season franchise list: 32 teams (31 before
 the Texans' 2002 debut), 893 observations, seasons 1999-2026, every row
@@ -119,7 +136,10 @@ the Texans' 2002 debut), 893 observations, seasons 1999-2026, every row
 record carries, so relocations and renames land in the season they
 happened -- the Raiders are Oakland through 2019 -- with one oddity kept as
 ESPN has it: Washington is "Washington" for 2019, the season before the
-name was dropped, as well as 2020-2021. Refresh a season with
+name was dropped, as well as 2020-2021. It also holds each franchise's
+Kalshi and Polymarket names, and the one endgame stores it under
+(`source=endgame`: "chiefs", "niners"), which is what ties an endgame NFL
+game to an ESPN id. Refresh a season with
 
 ```shell
 ciwyw fetch nfl 2027   # the `sync` and `cli` extras
@@ -130,6 +150,34 @@ College names don't come from `fetch`; they come from `ciwyw sync`, which
 reconciles ESPN's scoreboards against the seasons a consumer replays.
 `TeamNamer` still leaves the NFL alone, because endgame stores NFL teams by
 nickname ("chiefs") and none of ESPN's names would match.
+
+### Prediction market names
+
+Kalshi and Polymarket write every team as a code in their tickers and
+slugs (`KXNCAAFGAME-26SEP26ILLOSU`, `cbb-dxst-sdak-2025-11-03`) and as
+display names elsewhere. `ciwyw venues` reads a venue's roster, ties each
+team to an ESPN id through the full name, which is the one thing both
+sides write alike, and stages the code and every spelling under the venue:
+
+```shell
+ciwyw venues kalshi ncaafb 2026   # the `sync` and `cli` extras
+ciwyw venues polymarket ncaambb 2026 --check   # report only
+ciwyw show --output call_it_what_you_want/data/ncaa.csv
+```
+
+It prints the teams it couldn't place, one per line. Most are schools
+ESPN never listed -- both rosters carry D-II, D-III and NAIA programs that
+only play each other -- and the rest are spellings that want a row by
+hand ("UMass Minutemen" is ESPN's "Massachusetts Minutemen"). A venue name
+already on file is the first thing a re-run checks, so a hand-written row
+is how a miss stays fixed. A spelling that's already another team's ESPN
+name is never filed, so an unscoped lookup that works today keeps working.
+
+The rows bundled were read in September 2026, with the misses among
+Division I teams placed by hand, and cover every Division I team in all
+three college leagues for both venues -- except four Polymarket's roster
+doesn't list at all (UNC Wilmington, UNC Greensboro, Cal State Northridge,
+SIU Edwardsville), which a pull has to place by the name on the game.
 
 ## Recording what you find
 
