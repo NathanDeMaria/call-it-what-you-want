@@ -175,9 +175,13 @@ name is never filed, so an unscoped lookup that works today keeps working.
 
 The rows bundled were read in September 2026, with the misses among
 Division I teams placed by hand, and cover every Division I team in all
-three college leagues for both venues -- except four Polymarket's roster
-doesn't list at all (UNC Wilmington, UNC Greensboro, Cal State Northridge,
-SIU Edwardsville), which a pull has to place by the name on the game.
+three college leagues for both venues. Four schools Polymarket's roster
+doesn't list at all -- UNC Wilmington, UNC Greensboro, Cal State
+Northridge, SIU Edwardsville -- are filed by hand under the code and name
+its games carry (`ncw`, "UNCW Seahawks"). So are the older codes on its
+2025 football events, from before the slugs changed (`sjsu`, `usm`,
+`miami`, `ulm`, `utmt` for today's `sjst`, `soumis`, `mia`, `lamon`,
+`tmrt`).
 
 ## Recording what you find
 
