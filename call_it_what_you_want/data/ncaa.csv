@@ -42534,9 +42534,7 @@ espn_id,name,year,source,league,same_as
 14314,Louisiana Christian University Wildcats,2021,espn,ncaawbb,2347
 109516,Misericordia Cougars,2015,espn,ncaawbb,2969
 111902,Misericordia Cougars,2018,espn,ncaambb,2969
-5345,Benedictine (IL) Eagles,2018,espn,ncaambb,2283
 2697,West Florida Argonauts,2001,espn,ncaambb,110242
-3229,Virginia Lynchburg Dragons,2012,espn,ncaambb,2355
 110394,Whittier Poets,2016,espn,ncaawbb,2850
 157,Nebraska Wesleyan Prairie Wolves,2019,espn,ncaambb,6845
 3092,Davenport Panthers,2004,espn,ncaambb,110254
@@ -42550,7 +42548,6 @@ espn_id,name,year,source,league,same_as
 126834,Lincoln (CA) Oaklanders,2022,espn,ncaawbb,124179
 108860,Keystone Giants,2014,espn,ncaambb,122774
 2059,Benedict Tigers,2001,espn,ncaambb,490
-2785,Union Garnet Chargers,2006,espn,ncaambb,237
 380,Anderson (SC) Trojans,2001,espn,ncaambb,129469
 109616,Waldorf Warriors,2015,espn,ncaawbb,3080
 3188,Arizona Christian Firestorm,2011,espn,ncaambb,108358
@@ -46419,9 +46416,9 @@ espn_id,name,year,source,league,same_as
 2460,Northern Iowa Panthers,2026,kalshi,ncaambb,
 2460,Northern Iowa,2026,kalshi,ncaambb,
 237,UNIN,2026,kalshi,ncaambb,
-237,Union (NY) Garnet Chargers,2026,kalshi,ncaambb,
-237,Union (NY),2026,kalshi,ncaambb,
-237,UNIO,2026,kalshi,ncaambb,
+2785,Union (NY) Garnet Chargers,2026,kalshi,ncaambb,
+2785,Union (NY),2026,kalshi,ncaambb,
+2785,UNIO,2026,kalshi,ncaambb,
 237,Union (TN) Bulldogs,2026,kalshi,ncaambb,
 237,Union (TN),2026,kalshi,ncaambb,
 167,UNM,2026,kalshi,ncaambb,
@@ -49575,9 +49572,9 @@ espn_id,name,year,source,league,same_as
 2460,Northern Iowa Panthers,2026,kalshi,ncaawbb,
 2460,Northern Iowa,2026,kalshi,ncaawbb,
 237,UNIN,2026,kalshi,ncaawbb,
-237,Union (NY) Garnet Chargers,2026,kalshi,ncaawbb,
-237,Union (NY),2026,kalshi,ncaawbb,
-237,UNIO,2026,kalshi,ncaawbb,
+2785,Union (NY) Garnet Chargers,2026,kalshi,ncaawbb,
+2785,Union (NY),2026,kalshi,ncaawbb,
+2785,UNIO,2026,kalshi,ncaawbb,
 237,Union (TN) Bulldogs,2026,kalshi,ncaawbb,
 237,Union (TN),2026,kalshi,ncaawbb,
 2439,UNLV,2026,kalshi,ncaawbb,
