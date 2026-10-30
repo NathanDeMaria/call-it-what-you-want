@@ -36991,7 +36991,7 @@ espn_id,year,league,division,conference
 226,2027,ncaambb,NCAA Division III,Little East
 229,2027,ncaambb,NCAA Division II,South Atlantic
 230,2027,ncaambb,NCAA Division II,Conference Carolinas
-237,2027,ncaambb,NCAA Division III,
+237,2027,ncaambb,NCAA Division II,Gulf South
 241,2027,ncaambb,NCAA Division III,American Southwest
 244,2027,ncaambb,NCAA Division II,Lone Star
 246,2027,ncaambb,NCAA Division III,Landmark
@@ -41392,7 +41392,7 @@ espn_id,year,league,division,conference
 226,2027,ncaawbb,NCAA Division III,Little East
 229,2027,ncaawbb,NCAA Division II,South Atlantic
 230,2027,ncaawbb,NCAA Division II,Conference Carolinas
-237,2027,ncaawbb,NCAA Division III,
+237,2027,ncaawbb,NCAA Division II,Gulf South
 241,2027,ncaawbb,NCAA Division III,American Southwest
 244,2027,ncaawbb,NCAA Division II,Lone Star
 247,2027,ncaawbb,NCAA Division III,MAC Freedom
@@ -42011,3 +42011,7 @@ espn_id,year,league,division,conference
 131775,2027,ncaawbb,NCAA Division III,Skyline
 131832,2027,ncaawbb,NAIA,Frontier
 131833,2027,ncaawbb,NAIA,Continental Athletic
+2785,2027,ncaambb,NCAA Division III,Liberty League
+2785,2027,ncaawbb,NCAA Division III,Liberty League
+2283,2027,ncaambb,NAIA,Heart of America Athletic
+5345,2027,ncaambb,NCAA Division III,Northern Athletics Collegiate
