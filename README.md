@@ -130,6 +130,21 @@ football, 15,165 men's basketball, and 12,390 women's basketball. On top
 of that it carries the prediction markets' names for the same teams,
 `source=kalshi` and `source=polymarket` -- see below.
 
+`ncaa_classifications.csv` is where each team played: ESPN's groups for
+football's divisions and conferences and for basketball's Division I,
+fetched with `ciwyw classifications fetch`. Basketball's teams outside
+Division I aren't in any ESPN group, so they were filed in October 2026
+from Wikipedia's current NCAA D-I, D-II, D-III and NAIA member lists,
+matched to each league's ESPN names by school, nickname and state,
+checked against the NCAA directory, and reviewed by hand. Each is filed
+once at 2027 (2026-27) with its conference. Earlier seasons are football's
+D-II/D-III rows, a year later (football's 2015 is basketball's 2016),
+but only where the football id names the same school: ESPN reuses
+small-school ids across sports, and id 2283 is Benedictine (IL) in
+football and Benedictine College (KS) in men's basketball. A team none
+of those lists places -- NCCAA, USCAA, a branch campus, a closed school
+-- has no row.
+
 `nfl.csv` is ESPN's season-by-season franchise list: 32 teams (31 before
 the Texans' 2002 debut), 893 observations, seasons 1999-2026, every row
 `source=espn` and `league=nfl`. The names are the ones each season's team
