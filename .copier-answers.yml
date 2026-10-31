@@ -1,0 +1,8 @@
+# Changes here will be overwritten by Copier
+_commit: v1.0.0
+_src_path: gh:NathanDeMaria/mirrorball
+aws: true
+description: Translate between names and ID schemes for sports teams/athletes/etc.
+kind: library
+module_name: call_it_what_you_want
+project_name: call-it-what-you-want
