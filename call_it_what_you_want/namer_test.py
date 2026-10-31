@@ -133,6 +133,30 @@ def test_a_league_with_no_name_on_record_leaves_it_alone() -> None:
     assert namer.ambiguous["UNLV Lady Rebels"] == 1
 
 
+def test_a_name_two_sports_give_two_schools_is_read_in_the_asking_league() -> None:
+    """Football's 237 is Union (NY); basketball's is Union (TN), and its
+    Union (NY) is 2785. Pooled, the name is both; asked in basketball, it
+    is the one basketball recorded."""
+    teams = teams_from_csv(
+        [
+            "espn_id,name,year,source,league,same_as",
+            "237,Union Garnet Chargers,2022,espn,ncaafb,",
+            "237,Union (TN) Bulldogs,2022,espn,ncaambb,",
+            "2785,Union Garnet Chargers,2022,espn,ncaambb,",
+        ]
+    )
+    mens = TeamNamer(teams, "mens")
+
+    assert mens.espn_id("Union Garnet Chargers") == "2785"
+    assert mens.canonical("Union Garnet Chargers") == "Union Garnet Chargers"
+    assert TeamNamer(teams).espn_id("Union Garnet Chargers") is None
+
+
+def test_a_name_only_another_sport_recorded_still_resolves() -> None:
+    namer = TeamNamer(teams_from_csv(_UNLV[:2]), "womens")
+    assert namer.espn_id("UNLV Rebels") == "2439"
+
+
 def test_the_nfl_does_not_borrow_college_ids() -> None:
     """ESPN id 2 is both the Buffalo Bills and the Auburn Tigers."""
     namer = TeamNamer.for_league("nfl")

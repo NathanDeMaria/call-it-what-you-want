@@ -8,8 +8,12 @@ ESPN = "espn"
 # spells things. See `venues`.
 KALSHI = "kalshi"
 POLYMARKET = "polymarket"
-# What endgame stores a team as, where that isn't an ESPN name: the NFL,
-# which it keeps by lowercased nickname ("chiefs", "niners").
+# What endgame stores a team as, where that isn't ESPN's name for it: the NFL,
+# which it keeps by lowercased nickname ("chiefs", "niners"), and a small
+# college's name as ESPN spelled it when the season was stored, which ESPN
+# has since renamed ("Albany St (GA) Golden Rams") and now serves for those
+# same seasons under the new name. As ESPN rows the two would be one season
+# under two names and leave the team with no current one.
 ENDGAME = "endgame"
 
 # Leagues, as a name context rather than an id namespace. ESPN calls the

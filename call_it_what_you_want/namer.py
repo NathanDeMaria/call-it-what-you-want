@@ -40,7 +40,15 @@ from typing import TYPE_CHECKING, Self
 
 from .data import NCAA, default_teams
 from .registry import AmbiguousTeamError, Teams, UnknownTeamError
-from .types import NCAAFB, NCAAMBB, NCAAWBB, AmbiguousNameError, NoNamesError
+from .types import (
+    ESPN,
+    NCAAFB,
+    NCAAMBB,
+    NCAAWBB,
+    AmbiguousNameError,
+    NoNamesError,
+    Team,
+)
 
 if TYPE_CHECKING:
     # Only for the signature of `apply`. Importing it for real would put
@@ -141,7 +149,7 @@ class TeamNamer:
         if self._teams is None:
             return name
         try:
-            return self._teams.current_name(name, league=self._league)
+            return self._team(name).current_name(ESPN, league=self._league)
         except UnknownTeamError:
             # A team the registry has never seen. It keeps its own name, so
             # it rates normally and only misses out on being merged with its
@@ -167,9 +175,29 @@ class TeamNamer:
         if self._teams is None:
             return None
         try:
-            return self._teams.espn_id(name)
+            return self._team(name).espn_id
         except UnknownTeamError, AmbiguousTeamError:
             return None
+
+    def _team(self, name: str) -> Team:
+        """The team `name` means in this league, else in any league.
+
+        This league's names first, because a name can belong to one school
+        in one sport and another in the next: ESPN's football 237 is Union
+        (NY), the "Union Garnet Chargers", while men's basketball's 237 is
+        Union (TN) and its Union Garnet Chargers are 2785. Pooled, that name
+        is two teams and placed on neither; asked in basketball, it is one.
+        Every league's names are still the fallback, so a name only ever
+        recorded in another sport resolves as it always has -- this changes
+        only what a pooled lookup couldn't answer.
+        """
+        assert self._teams is not None
+        if self._league is not None:
+            try:
+                return self._teams.by_name(name, league=self._league)
+            except UnknownTeamError:
+                pass
+        return self._teams.by_name(name)
 
     def resolves(self, name: str) -> bool:
         """Whether the registry can place this name on exactly one team."""
