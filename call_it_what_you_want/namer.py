@@ -148,7 +148,7 @@ class TeamNamer:
             # other spellings.
             self.unknown[name] += 1
             return name
-        except (AmbiguousTeamError, AmbiguousNameError, NoNamesError):
+        except AmbiguousTeamError, AmbiguousNameError, NoNamesError:
             # Either two teams answer to this name, or this team has no
             # name on record for this league, or it had two in one season.
             # None of those is something to guess at: renaming on a guess
@@ -168,7 +168,7 @@ class TeamNamer:
             return None
         try:
             return self._teams.espn_id(name)
-        except (UnknownTeamError, AmbiguousTeamError):
+        except UnknownTeamError, AmbiguousTeamError:
             return None
 
     def resolves(self, name: str) -> bool:
@@ -185,7 +185,7 @@ class TeamNamer:
         left_id = self.espn_id(left)
         return left_id is not None and left_id == self.espn_id(right)
 
-    def apply(self, game: "Game") -> "Game":
+    def apply(self, game: Game) -> Game:
         """The same game under canonical names.
 
         Returns the game itself when neither name changes, which is the

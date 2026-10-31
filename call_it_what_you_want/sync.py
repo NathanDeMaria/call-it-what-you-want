@@ -272,7 +272,7 @@ async def _fetch(
                 if response.status != 200:
                     return []
                 payload = await response.json(content_type=None)
-        except (aiohttp.ClientError, asyncio.TimeoutError) as e:
+        except (TimeoutError, aiohttp.ClientError) as e:
             print(f"  skipped {year} {params}: {e!r}")
             return []
 
@@ -551,7 +551,7 @@ def _review_names(
 def _current(team: Team, league: str) -> str | None:
     try:
         return team.current_name(league=league)
-    except (NoNamesError, AmbiguousNameError):
+    except NoNamesError, AmbiguousNameError:
         return None
 
 
