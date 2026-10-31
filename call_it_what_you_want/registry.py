@@ -161,7 +161,7 @@ class Teams:
         """
         return self.by_name(name, source=source, league=league).espn_id
 
-    def with_teams(self, teams: Iterable[Team]) -> "Teams":
+    def with_teams(self, teams: Iterable[Team]) -> Teams:
         """
         A copy of this registry with `teams` added.
 

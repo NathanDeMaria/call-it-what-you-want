@@ -79,7 +79,7 @@ def teams_from_csv(lines: Iterable[str]) -> Teams:
         espn_id = row["espn_id"]
         try:
             year = int(row["year"])
-        except (TypeError, ValueError):
+        except TypeError, ValueError:
             raise ValueError(
                 f"Row {number}: year {row['year']!r} isn't a number."
             ) from None

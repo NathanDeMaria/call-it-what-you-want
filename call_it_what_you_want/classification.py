@@ -182,7 +182,7 @@ class Classifications:
 
     def with_classifications(
         self, classifications: Iterable[TeamClassification]
-    ) -> "Classifications":
+    ) -> Classifications:
         """
         A copy of this table with more observations layered on top.
         """
@@ -225,7 +225,7 @@ def classifications_from_csv(
     for number, row in enumerate(reader, start=2):  # row 1 is the header
         try:
             year = int(row["year"])
-        except (TypeError, ValueError):
+        except TypeError, ValueError:
             raise ValueError(
                 f"Row {number}: year {row['year']!r} isn't a number."
             ) from None
